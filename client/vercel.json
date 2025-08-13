@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "package.json", "use": "@vercel/static-build", "config": { "distDir": "dist" } }
+  ],
+  "env": {
+    "VITE_SERVER_URL": "https://REPLACE_WITH_FLY_APP.fly.dev"
+  }
+}
+
+
