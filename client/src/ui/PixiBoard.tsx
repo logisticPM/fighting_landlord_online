@@ -46,7 +46,10 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
 
       // Title omitted to avoid Text plugin dependency
 
-      if (containerRef.current) containerRef.current.appendChild(app.canvas);
+      if (containerRef.current) {
+        const canvasEl = (app as any).view ?? (app as any).canvas;
+        if (canvasEl) containerRef.current.appendChild(canvasEl);
+      }
       renderScene();
     };
     bootstrap();
