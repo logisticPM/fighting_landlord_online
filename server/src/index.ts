@@ -45,6 +45,10 @@ app.use(cors());
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
+// Basic health and root endpoints for platform smoke checks
+app.get('/', (_req, res) => res.status(200).send('OK'));
+app.get('/healthz', (_req, res) => res.status(200).json({ status: 'ok' }));
+
 const PORT = Number(process.env.PORT) || 5179;
 
 const rooms: Map<string, RoomState> = new Map();
