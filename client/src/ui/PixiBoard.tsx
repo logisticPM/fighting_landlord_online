@@ -47,8 +47,28 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       // Title omitted to avoid Text plugin dependency
 
       if (containerRef.current) {
-        const canvasEl = (app as any).view ?? (app as any).canvas;
-        if (canvasEl) containerRef.current.appendChild(canvasEl);
+        const canvasEl: HTMLCanvasElement | undefined = (app as any).view ?? (app as any).canvas;
+        // Ensure container has explicit size so canvas is visible
+        try {
+          (containerRef.current as HTMLDivElement).style.width = `${width}px`;
+          (containerRef.current as HTMLDivElement).style.height = `${height}px`;
+        } catch {}
+        if (canvasEl) {
+          try {
+            canvasEl.style.display = 'block';
+            canvasEl.style.width = `${width}px`;
+            canvasEl.style.height = `${height}px`;
+          } catch {}
+          containerRef.current.appendChild(canvasEl);
+        } else {
+          // Fallback: attach renderer view if present
+          const fallback = (app.renderer as any)?.view?.canvas || (app.renderer as any)?.view;
+          if (fallback) containerRef.current.appendChild(fallback);
+        }
+      } else {
+        // Extreme fallback to ensure visibility in production
+        const canvasEl: HTMLCanvasElement | undefined = (app as any).view ?? (app as any).canvas;
+        if (canvasEl) document.body.appendChild(canvasEl);
       }
       renderScene();
     };
