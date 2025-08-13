@@ -1,0 +1,108 @@
+{
+  "world": {
+    "width": 1280,
+    "height": 720
+  },
+  "layout": {
+    "landlordCards": {
+      "startX": 590,
+      "y": 100,
+      "spacing": 40
+    },
+    "players": [
+      { "id": 0, "x": 640, "y": 580, "cardSpacing": 25, "scale": 0.8 },
+      { "id": 1, "x": 100, "y": 200, "cardSpacing": 25, "scale": 0.25 },
+      { "id": 2, "x": 1180, "y": 200, "cardSpacing": 25, "scale": 0.25 }
+    ],
+    "player_played_cards": { "x": 640, "y": 360 },
+    "landlord_cards": { "x": 640, "y": 120, "spacing": 25 }
+  },
+  "card": {
+    "width": 100,
+    "height": 140
+  },
+  "texturePath": {
+    "base": "/GameAssets/images/",
+    "back": "/GameAssets/images/cardback.png",
+    "background": "/GameAssets/images/background3.png",
+    "spriteSheets": {
+      "playingCards": "/GameAssets/images/PlayingCards 128x178.png",
+      "jokers": "/GameAssets/images/Jokers 128x178.png",
+      "cardBacks": "/GameAssets/images/Card Backs 128x178.png",
+      "cardTemplate": "/GameAssets/images/Card Template 128x178.png"
+    },
+    "useSpriteSheets": true
+  },
+  "spriteSheetConfig": {
+    "cardWidth": 128,
+    "cardHeight": 178,
+    "playingCards": {
+      "cols": 13,
+      "rows": 4,
+      "layout": "梅花，红桃，黑桃，方片 x A,2,3,4,5,6,7,8,9,10,J,Q,K"
+    },
+    "jokers": {
+      "layout": "小王(左), 大王(右)"
+    },
+    "cardBacks": {
+      "count": 4,
+      "styles": ["蓝色花纹", "粉色星形", "红色图案", "深蓝图案"]
+    }
+  },
+  "cards": [
+    { "id": 0, "suit": "joker", "rank": "S", "value": 17, "fileName": "joker.png" },
+    { "id": 1, "suit": "joker", "rank": "X", "value": 16, "fileName": "sjoker.png" },
+    { "id": 2, "suit": "spades", "rank": "2", "value": 15, "fileName": "Pikes_2_white.png" },
+    { "id": 3, "suit": "hearts", "rank": "2", "value": 15, "fileName": "Hearts_2_white.png" },
+    { "id": 4, "suit": "clubs", "rank": "2", "value": 15, "fileName": "Clovers_2_white.png" },
+    { "id": 5, "suit": "diamonds", "rank": "2", "value": 15, "fileName": "Tiles_2_white.png" },
+    { "id": 6, "suit": "spades", "rank": "A", "value": 14, "fileName": "Pikes_A_white.png" },
+    { "id": 7, "suit": "hearts", "rank": "A", "value": 14, "fileName": "Hearts_A_white.png" },
+    { "id": 8, "suit": "clubs", "rank": "A", "value": 14, "fileName": "Clovers_A_white.png" },
+    { "id": 9, "suit": "diamonds", "rank": "A", "value": 14, "fileName": "Tiles_A_white.png" },
+    { "id": 10, "suit": "spades", "rank": "K", "value": 13, "fileName": "Pikes_King_white.png" },
+    { "id": 11, "suit": "hearts", "rank": "K", "value": 13, "fileName": "Hearts_King_white.png" },
+    { "id": 12, "suit": "clubs", "rank": "K", "value": 13, "fileName": "Clovers_King_white.png" },
+    { "id": 13, "suit": "diamonds", "rank": "K", "value": 13, "fileName": "Tiles_King_white.png" },
+    { "id": 14, "suit": "spades", "rank": "Q", "value": 12, "fileName": "Pikes_Queen_white.png" },
+    { "id": 15, "suit": "hearts", "rank": "Q", "value": 12, "fileName": "Hearts_Queen_white.png" },
+    { "id": 16, "suit": "clubs", "rank": "Q", "value": 12, "fileName": "Clovers_Queen_white.png" },
+    { "id": 17, "suit": "diamonds", "rank": "Q", "value": 12, "fileName": "Tiles_Queen_white.png" },
+    { "id": 18, "suit": "spades", "rank": "J", "value": 11, "fileName": "Pikes_Jack_white.png" },
+    { "id": 19, "suit": "hearts", "rank": "J", "value": 11, "fileName": "Hearts_Jack_white.png" },
+    { "id": 20, "suit": "clubs", "rank": "J", "value": 11, "fileName": "Clovers_Jack_white.png" },
+    { "id": 21, "suit": "diamonds", "rank": "J", "value": 11, "fileName": "Tiles_Jack_white.png" },
+    { "id": 22, "suit": "spades", "rank": "10", "value": 10, "fileName": "Pikes_10_white.png" },
+    { "id": 23, "suit": "hearts", "rank": "10", "value": 10, "fileName": "Hearts_10_white.png" },
+    { "id": 24, "suit": "clubs", "rank": "10", "value": 10, "fileName": "Clovers_10_white.png" },
+    { "id": 25, "suit": "diamonds", "rank": "10", "value": 10, "fileName": "Tiles_10_white.png" },
+    { "id": 26, "suit": "spades", "rank": "9", "value": 9, "fileName": "Pikes_9_white.png" },
+    { "id": 27, "suit": "hearts", "rank": "9", "value": 9, "fileName": "Hearts_9_white.png" },
+    { "id": 28, "suit": "clubs", "rank": "9", "value": 9, "fileName": "Clovers_9_white.png" },
+    { "id": 29, "suit": "diamonds", "rank": "9", "value": 9, "fileName": "Tiles_9_white.png" },
+    { "id": 30, "suit": "spades", "rank": "8", "value": 8, "fileName": "Pikes_8_white.png" },
+    { "id": 31, "suit": "hearts", "rank": "8", "value": 8, "fileName": "Hearts_8_white.png" },
+    { "id": 32, "suit": "clubs", "rank": "8", "value": 8, "fileName": "Clovers_8_white.png" },
+    { "id": 33, "suit": "diamonds", "rank": "8", "value": 8, "fileName": "Tiles_8_white.png" },
+    { "id": 34, "suit": "spades", "rank": "7", "value": 7, "fileName": "Pikes_7_white.png" },
+    { "id": 35, "suit": "hearts", "rank": "7", "value": 7, "fileName": "Hearts_7_white.png" },
+    { "id": 36, "suit": "clubs", "rank": "7", "value": 7, "fileName": "Clovers_7_white.png" },
+    { "id": 37, "suit": "diamonds", "rank": "7", "value": 7, "fileName": "Tiles_7_white.png" },
+    { "id": 38, "suit": "spades", "rank": "6", "value": 6, "fileName": "Pikes_6_white.png" },
+    { "id": 39, "suit": "hearts", "rank": "6", "value": 6, "fileName": "Hearts_6_white.png" },
+    { "id": 40, "suit": "clubs", "rank": "6", "value": 6, "fileName": "Clovers_6_white.png" },
+    { "id": 41, "suit": "diamonds", "rank": "6", "value": 6, "fileName": "Tiles_6_white.png" },
+    { "id": 42, "suit": "spades", "rank": "5", "value": 5, "fileName": "Pikes_5_white.png" },
+    { "id": 43, "suit": "hearts", "rank": "5", "value": 5, "fileName": "Hearts_5_white.png" },
+    { "id": 44, "suit": "clubs", "rank": "5", "value": 5, "fileName": "Clovers_5_white.png" },
+    { "id": 45, "suit": "diamonds", "rank": "5", "value": 5, "fileName": "Tiles_5_white.png" },
+    { "id": 46, "suit": "spades", "rank": "4", "value": 4, "fileName": "Pikes_4_white.png" },
+    { "id": 47, "suit": "hearts", "rank": "4", "value": 4, "fileName": "Hearts_4_white.png" },
+    { "id": 48, "suit": "clubs", "rank": "4", "value": 4, "fileName": "Clovers_4_white.png" },
+    { "id": 49, "suit": "diamonds", "rank": "4", "value": 4, "fileName": "Tiles_4_white.png" },
+    { "id": 50, "suit": "spades", "rank": "3", "value": 3, "fileName": "Pikes_3_white.png" },
+    { "id": 51, "suit": "hearts", "rank": "3", "value": 3, "fileName": "Hearts_3_white.png" },
+    { "id": 52, "suit": "clubs", "rank": "3", "value": 3, "fileName": "Clovers_3_white.png" },
+    { "id": 53, "suit": "diamonds", "rank": "3", "value": 3, "fileName": "Tiles_3_white.png" }
+  ]
+}

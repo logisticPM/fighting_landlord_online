@@ -1,0 +1,21 @@
+{
+  "scriptFile": "../../dist/signalr/game/index.js",
+  "bindings": [
+    {
+      "type": "signalRTrigger",
+      "name": "invocation",
+      "hubName": "game",
+      "direction": "in",
+      "connectionStringSetting": "AzureSignalRConnectionString"
+    },
+    {
+      "type": "signalR",
+      "name": "signalRMessages",
+      "hubName": "game",
+      "direction": "out",
+      "connectionStringSetting": "AzureSignalRConnectionString"
+    }
+  ]
+}
+
+

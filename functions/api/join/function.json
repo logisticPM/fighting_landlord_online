@@ -1,0 +1,34 @@
+{
+  "scriptFile": "../../dist/api/join/index.js",
+  "bindings": [
+    {
+      "authLevel": "anonymous",
+      "type": "httpTrigger",
+      "direction": "in",
+      "name": "req",
+      "methods": ["post"],
+      "route": "join"
+    },
+    {
+      "type": "http",
+      "direction": "out",
+      "name": "res"
+    },
+    {
+      "type": "signalR",
+      "name": "signalRMessages",
+      "hubName": "game",
+      "direction": "out",
+      "connectionStringSetting": "AzureSignalRConnectionString"
+    },
+    {
+      "type": "signalR",
+      "name": "signalRGroupActions",
+      "hubName": "game",
+      "direction": "out",
+      "connectionStringSetting": "AzureSignalRConnectionString"
+    }
+  ]
+}
+
+

@@ -1,0 +1,27 @@
+{
+  "scriptFile": "../../dist/api/negotiate/index.js",
+  "bindings": [
+    {
+      "authLevel": "anonymous",
+      "type": "httpTrigger",
+      "direction": "in",
+      "name": "req",
+      "methods": ["get"],
+      "route": "negotiate"
+    },
+    {
+      "type": "http",
+      "direction": "out",
+      "name": "res"
+    },
+    {
+      "type": "signalRConnectionInfo",
+      "name": "connectionInfo",
+      "hubName": "game",
+      "direction": "in",
+      "connectionStringSetting": "AzureSignalRConnectionString"
+    }
+  ]
+}
+
+

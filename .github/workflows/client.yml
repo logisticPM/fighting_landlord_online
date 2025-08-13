@@ -1,0 +1,39 @@
+name: Deploy Client to Azure Storage Static Website
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'landlord_online/client/**'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install deps
+        working-directory: landlord_online/client
+        run: npm ci
+
+      - name: Build
+        working-directory: landlord_online/client
+        env:
+          VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
+        run: npm run build
+
+      - name: Upload to Azure Storage Static Website
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az cloud set -n AzureCloud
+            az login --service-principal -u ${{ secrets.AZURE_CLIENT_ID }} -p ${{ secrets.AZURE_CLIENT_SECRET }} --tenant ${{ secrets.AZURE_TENANT_ID }}
+            az storage blob service-properties update --account-name ${{ secrets.STORAGE_ACCOUNT }} --static-website --index-document index.html --404-document index.html
+            az storage blob upload-batch -s landlord_online/client/dist -d '$web' --account-name ${{ secrets.STORAGE_ACCOUNT }}
+
+
