@@ -4,7 +4,7 @@
     { "src": "package.json", "use": "@vercel/static-build", "config": { "distDir": "dist" } }
   ],
   "env": {
-    "VITE_SERVER_URL": "https://REPLACE_WITH_FLY_APP.fly.dev"
+    "VITE_SERVER_URL": "https://fighting-landlord-api.fly.dev"
   }
 }
 

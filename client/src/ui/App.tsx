@@ -31,7 +31,9 @@ export const App: React.FC = () => {
     s.on('game:started', (sn: Snapshot) => setSnap(sn));
     s.on('game:update', (sn: Snapshot) => setSnap(sn));
     s.on('game:ended', (payload: any) => alert(`Winner seat: ${payload.winnerSeat}`));
-    return () => s.disconnect();
+    return () => {
+      try { s.disconnect(); } catch { /* noop */ }
+    };
   }, []);
 
   const joinRoom = () => {
