@@ -28,7 +28,7 @@ type Props = {
 export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedChange, width = 1280, height = 720 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const appRef = useRef<PIXI.Application | null>(null);
-  const layersRef = useRef<{ table: PIXI.Container; hands: PIXI.Container; center: PIXI.Container; fx: PIXI.Container } | null>(null);
+  const layersRef = useRef<{ table: PIXI.Container; hands: PIXI.Container; center: PIXI.Container; fx: PIXI.Container; ui: PIXI.Container } | null>(null);
   const lastPlayKeyRef = useRef<string>('');
   const animatingIdsRef = useRef<Set<Entity>>(new Set());
   const prevHandRef = useRef<Entity[]>([]);
@@ -61,8 +61,9 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       const center = new PIXI.Container();
       center.sortableChildren = true;
       const fx = new PIXI.Container();
-      app.stage.addChild(table, center, hands, fx);
-      layersRef.current = { table, hands, center, fx };
+      const ui = new PIXI.Container();
+      app.stage.addChild(table, center, hands, fx, ui);
+      layersRef.current = { table, hands, center, fx, ui };
 
       // Background image (prefer GameData texturePath.background)
       try {
@@ -135,8 +136,9 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
     const layers = layersRef.current;
     if (!app || !layers) return;
 
-    const { hands, center, fx } = layers;
+    const { hands, center, fx, ui } = layers;
     hands.removeChildren();
+    ui.removeChildren();
 
     // Layout from GameData mapping
     const gd = getGameData();
@@ -150,7 +152,7 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
     const leftCfg = layouts.find(p => p.id === 1) ?? { id: 1, x: 100, y: 200, cardSpacing: 20, scale: 0.25 };
     const rightCfg = layouts.find(p => p.id === 2) ?? { id: 2, x: width-100, y: 200, cardSpacing: 20, scale: 0.25 };
     const spacing = meCfg.cardSpacing ?? 35;
-    const scale = meCfg.scale ?? 0.8;
+    const scale = Math.max(1.0, meCfg.scale ?? 0.8); // 放大我方手牌提高清晰度
     const baseY = meCfg.y ?? (height - 80);
     const baseW = gd?.card?.width ?? 100;
     const baseH = gd?.card?.height ?? 140;
@@ -183,6 +185,27 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       });
       hands.addChild(sp);
     });
+
+    // Avatars (简单占位): 底部/左/右三个头像，显示 Seat 编号
+    const drawAvatar = (x: number, y: number, seatLabel: string) => {
+      const r = 18;
+      const g = new PIXI.Graphics();
+      g.beginFill(0xffffff, 0.95).lineStyle(2, 0x1f2937, 1).drawCircle(0, 0, r).endFill();
+      g.position.set(x, y);
+      const t = new PIXI.Text(seatLabel, { fontFamily: 'Arial', fontSize: 12, fill: 0x111827, align: 'center' });
+      t.anchor.set(0.5, 0.5);
+      t.position.set(0, 0);
+      const wrap = new PIXI.Container();
+      wrap.addChild(g, t);
+      ui.addChild(wrap);
+    };
+    // bottom avatar
+    drawAvatar(meCfg.x ?? width/2, (meCfg.y ?? (height-80)) + 30, `S${(mySeat ?? 0)}`);
+    // left/right avatars
+    const leftCfg = layouts.find(p => p.id === 1) ?? { id:1, x: 100, y: 200, cardSpacing: 20, scale: 0.25 };
+    const rightCfg = layouts.find(p => p.id === 2) ?? { id:2, x: width-100, y: 200, cardSpacing: 20, scale: 0.25 };
+    drawAvatar(leftCfg.x ?? 100, (leftCfg.y ?? 200) - 30, 'S1');
+    drawAvatar(rightCfg.x ?? (width-100), (rightCfg.y ?? 200) - 30, 'S2');
 
     // Render opponents as card backs（左/右固定，不跟随 seat 映射）
     if (snap) {
@@ -330,8 +353,8 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
     // 记录当前手牌用于下次计算起点
     prevHandRef.current = myHand.slice();
 
-    // Render bottom cards from GameData (top center)
-    if (snap && Array.isArray((snap as any).bottom) && (snap as any).bottom.length > 0) {
+    // Render bottom cards from GameData
+    if (snap && snap.started && Array.isArray((snap as any).bottom) && (snap as any).bottom.length > 0) {
       const list = (snap as any).bottom as Entity[];
       const cfg = gd?.layout?.landlord_cards ?? { x: width/2, y: 120, spacing: 25 } as any;
       const s = meCfg.scale ?? 0.8;
@@ -345,6 +368,23 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
         sp.position.set(startX + idx * spacing2, y);
         center.addChild(sp);
       });
+    }
+    // During bidding show facedown bottom cards
+    if (snap && !snap.started && snap.bottomCount > 0) {
+      const cfg = gd?.layout?.landlord_cards ?? { x: width/2, y: 120, spacing: 25 } as any;
+      const s = meCfg.scale ?? 0.8;
+      const spacing2 = cfg.spacing ?? 25;
+      const totalWidth = (snap.bottomCount - 1) * spacing2 + baseW * s;
+      const startX = (cfg.x ?? width/2) - totalWidth / 2;
+      const y = cfg.y ?? 120;
+      const backTex = PIXI.Assets.cache.get('cardback.png') || spriteSheetLoader.getTexture('cardback.png') || PIXI.Texture.WHITE;
+      for (let i = 0; i < snap.bottomCount; i++) {
+        const b = new PIXI.Sprite(backTex);
+        if (backTex === PIXI.Texture.WHITE) { b.width = baseW; b.height = baseH; b.tint = 0xcccccc; }
+        b.scale.set(s);
+        b.position.set(startX + i * spacing2, y);
+        center.addChild(b);
+      }
     }
   };
 
