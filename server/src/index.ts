@@ -38,6 +38,10 @@ interface RoomState {
   lastPlayOwnerSeat: number | null;
   started: boolean;
   passCount: number;
+  bidding: boolean;
+  currentBid: number; // 0..3
+  biddingSeat: number; // whose turn to bid
+  provisionalLandlordSeat: number | null;
 }
 
 const app = express();
@@ -160,6 +164,10 @@ function ensureRoom(roomId: string): RoomState {
       lastPlayOwnerSeat: null,
       started: false,
       passCount: 0,
+      bidding: false,
+      currentBid: 0,
+      biddingSeat: 0,
+      provisionalLandlordSeat: null,
     };
     rooms.set(roomId, room);
   }
@@ -170,6 +178,9 @@ function snapshot(room: RoomState, forSocket: string) {
   return {
     id: room.id,
     started: room.started,
+    bidding: room.bidding,
+    currentBid: room.currentBid,
+    biddingSeat: room.biddingSeat,
     landlordSeat: room.landlordSeat,
     bottomCount: room.bottomCards.length,
     bottom: room.started ? room.bottomCards : [],
@@ -209,22 +220,21 @@ io.on('connection', (socket) => {
     if (room.players.length === 3) {
       const deck = createDeck();
       const { hands, bottom } = deal(deck);
-      room.started = true;
-      room.landlordSeat = Math.floor(Math.random() * 3);
+      // Start bidding phase
+      room.bidding = true;
+      room.currentBid = 0;
+      room.biddingSeat = Math.floor(Math.random() * 3);
+      room.provisionalLandlordSeat = null;
       room.bottomCards = bottom;
       for (let i = 0; i < 3; i++) room.players[i].hand = hands[i];
-      room.players[room.landlordSeat].hand.push(...bottom);
-      room.currentSeat = room.landlordSeat;
-      room.lastPlay = [];
-      room.lastPlayOwnerSeat = null;
-      room.passCount = 0;
-      broadcastSnapshot(room, 'game:started');
+      io.to(id).emit('bidding:started', { biddingSeat: room.biddingSeat, currentBid: room.currentBid });
     }
   });
 
   socket.on('play:cards', ({ roomId, cards }: { roomId: string; cards: Entity[] }, cb?: (ret: any) => void) => {
     const room = rooms.get(roomId);
     if (!room) return cb?.({ ok: false, error: 'No room' });
+    if (room.bidding) return cb?.({ ok: false, error: 'Bidding not finished' });
     const player = room.players.find((p) => p.socketId === socket.id);
     if (!player) return cb?.({ ok: false, error: 'No player' });
     if (room.currentSeat !== player.seat) return cb?.({ ok: false, error: 'Not your turn' });
@@ -253,6 +263,7 @@ io.on('connection', (socket) => {
   socket.on('play:pass', ({ roomId }: { roomId: string }, cb?: (ret: any) => void) => {
     const room = rooms.get(roomId);
     if (!room) return cb?.({ ok: false, error: 'No room' });
+    if (room.bidding) return cb?.({ ok: false, error: 'Bidding not finished' });
     const player = room.players.find((p) => p.socketId === socket.id);
     if (!player) return cb?.({ ok: false, error: 'No player' });
     if (room.currentSeat !== player.seat) return cb?.({ ok: false, error: 'Not your turn' });
@@ -283,6 +294,65 @@ io.on('connection', (socket) => {
       }
     }
   });
+
+  // Bidding APIs
+  socket.on('bidding:bid', ({ roomId, amount }: { roomId: string; amount: number }, cb?: (ret: any) => void) => {
+    const room = rooms.get(roomId);
+    if (!room) return cb?.({ ok: false, error: 'No room' });
+    if (!room.bidding) return cb?.({ ok: false, error: 'Not in bidding phase' });
+    const player = room.players.find((p) => p.socketId === socket.id);
+    if (!player) return cb?.({ ok: false, error: 'No player' });
+    if (room.biddingSeat !== player.seat) return cb?.({ ok: false, error: 'Not your bid turn' });
+
+    // amount: 0=pass, 1..3 bid value
+    if (amount > room.currentBid) {
+      room.currentBid = Math.min(amount, 3);
+      room.provisionalLandlordSeat = player.seat;
+    }
+
+    // advance seat or finish
+    if (room.currentBid === 3) {
+      // max bid reached -> start game
+      startPlaying(room);
+      io.to(room.id).emit('bidding:ended', { landlordSeat: room.landlordSeat, currentBid: room.currentBid });
+      broadcastSnapshot(room, 'game:started');
+      return cb?.({ ok: true });
+    }
+
+    // move to next
+    room.biddingSeat = (room.biddingSeat + 1) % 3;
+
+    // If we have looped back and no one bid (>0), random landlord
+    const everyoneBidOnce = room.biddingSeat === 0; // rough heuristic for 3 players starting seat 0
+    if (everyoneBidOnce && room.currentBid === 0) {
+      room.provisionalLandlordSeat = Math.floor(Math.random() * 3);
+    }
+
+    // If we are back to provisional landlord -> start
+    if (room.provisionalLandlordSeat !== null && room.biddingSeat === room.provisionalLandlordSeat) {
+      startPlaying(room);
+      io.to(room.id).emit('bidding:ended', { landlordSeat: room.landlordSeat, currentBid: room.currentBid });
+      broadcastSnapshot(room, 'game:started');
+      return cb?.({ ok: true });
+    }
+
+    io.to(room.id).emit('bidding:state', { biddingSeat: room.biddingSeat, currentBid: room.currentBid, provisional: room.provisionalLandlordSeat });
+    cb?.({ ok: true });
+  });
 });
 
 server.listen(PORT, () => console.log(`Landlord online server listening on :${PORT}`));
+
+// Helpers
+function startPlaying(room: RoomState) {
+  room.bidding = false;
+  room.started = true;
+  room.landlordSeat = room.provisionalLandlordSeat ?? 0;
+  // Give bottom cards to landlord
+  const landlord = room.players[room.landlordSeat];
+  landlord.hand.push(...room.bottomCards);
+  room.currentSeat = room.landlordSeat;
+  room.lastPlay = [];
+  room.lastPlayOwnerSeat = null;
+  room.passCount = 0;
+}

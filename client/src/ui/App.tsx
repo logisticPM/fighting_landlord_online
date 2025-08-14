@@ -9,8 +9,12 @@ type Entity = number;
 type Snapshot = {
   id: string;
   started: boolean;
+  bidding?: boolean;
+  currentBid?: number;
+  biddingSeat?: number;
   landlordSeat: number | null;
   bottomCount: number;
+  bottom?: number[];
   currentSeat: number;
   lastPlay: Entity[];
   lastPlayOwnerSeat: number | null;
@@ -23,6 +27,7 @@ export const App: React.FC = () => {
   const [seat, setSeat] = useState<number | null>(null);
   const [snap, setSnap] = useState<Snapshot | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [bidState, setBidState] = useState<{ biddingSeat: number; currentBid: number } | null>(null);
 
   useEffect(() => {
     const s = io(SERVER_URL, { transports: ['websocket'] });
@@ -30,6 +35,9 @@ export const App: React.FC = () => {
     s.on('room:update', (sn: Snapshot) => setSnap(sn));
     s.on('game:started', (sn: Snapshot) => setSnap(sn));
     s.on('game:update', (sn: Snapshot) => setSnap(sn));
+    s.on('bidding:started', (st: { biddingSeat: number; currentBid: number }) => setBidState(st));
+    s.on('bidding:state', (st: { biddingSeat: number; currentBid: number }) => setBidState(st));
+    s.on('bidding:ended', (_: any) => setBidState(null));
     s.on('game:ended', (payload: any) => alert(`Winner seat: ${payload.winnerSeat}`));
     return () => {
       try { s.disconnect(); } catch { /* noop */ }
@@ -80,6 +88,20 @@ export const App: React.FC = () => {
           <div>Room: {snap.id} | Started: {String(snap.started)} | Turn Seat: {snap.currentSeat}</div>
           <div>Landlord Seat: {snap.landlordSeat} | Bottom: {snap.bottomCount}</div>
           <div>Last Play: {snap.lastPlay?.join(', ') || '-'}</div>
+        </div>
+      )}
+
+      {/* Bidding UI */}
+      {snap && bidState && (
+        <div style={{ marginTop: 12, padding: 8, background: '#fff', display: 'inline-block', border: '1px solid #ccc' }}>
+          <div>Bid turn: Seat {bidState.biddingSeat} | Current bid: {bidState.currentBid}</div>
+          {seat === bidState.biddingSeat && (
+            <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+              {[0,1,2,3].map(v => (
+                <button key={v} onClick={() => socket?.emit('bidding:bid', { roomId, amount: v }, () => {})} disabled={v<= (bidState?.currentBid ?? 0) && v!==0}>{v===0?'Pass':`Bid ${v}`}</button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
