@@ -59,14 +59,15 @@ class SpriteSheetLoader {
     this.loaded = true;
   }
 
-  private processPlayingCards(baseTexture: PIXI.Texture): void {
+  private processPlayingCards(tex: PIXI.Texture | PIXI.BaseTexture): void {
     const { cardWidth, cardHeight, playingCardsConfig } = this.config;
     const { cols, rows, suits, ranks } = playingCardsConfig;
 
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
         const rect = new PIXI.Rectangle(col * cardWidth, row * cardHeight, cardWidth, cardHeight);
-        const texture = new PIXI.Texture(baseTexture.baseTexture, rect);
+        const base = (tex as any).baseTexture ? (tex as PIXI.Texture).baseTexture : (tex as PIXI.BaseTexture);
+        const texture = new PIXI.Texture(base, rect);
         const key = this.getCardTextureKey(suits[row], ranks[col]);
         this.cardTextures.set(key, texture);
         PIXI.Assets.cache.set(key, texture);
@@ -74,22 +75,24 @@ class SpriteSheetLoader {
     }
   }
 
-  private processJokers(baseTexture: PIXI.Texture): void {
-    const width = baseTexture.width / 2;
-    const height = baseTexture.height;
-    const left = new PIXI.Texture(baseTexture.baseTexture, new PIXI.Rectangle(0, 0, width, height));
-    const right = new PIXI.Texture(baseTexture.baseTexture, new PIXI.Rectangle(width, 0, width, height));
+  private processJokers(tex: PIXI.Texture | PIXI.BaseTexture): void {
+    const base = (tex as any).baseTexture ? (tex as PIXI.Texture).baseTexture : (tex as PIXI.BaseTexture);
+    const width = base.width / 2;
+    const height = base.height;
+    const left = new PIXI.Texture(base, new PIXI.Rectangle(0, 0, width, height));
+    const right = new PIXI.Texture(base, new PIXI.Rectangle(width, 0, width, height));
     this.cardTextures.set('sjoker.png', left);
     this.cardTextures.set('joker.png', right);
     PIXI.Assets.cache.set('sjoker.png', left);
     PIXI.Assets.cache.set('joker.png', right);
   }
 
-  private processCardBacks(baseTexture: PIXI.Texture): void {
+  private processCardBacks(tex: PIXI.Texture | PIXI.BaseTexture): void {
     const { cardWidth, cardHeight, cardBacksConfig } = this.config;
+    const base = (tex as any).baseTexture ? (tex as PIXI.Texture).baseTexture : (tex as PIXI.BaseTexture);
     cardBacksConfig.styles.forEach((style, index) => {
       const rect = new PIXI.Rectangle(index * cardWidth, 0, cardWidth, cardHeight);
-      const texture = new PIXI.Texture(baseTexture.baseTexture, rect);
+      const texture = new PIXI.Texture(base, rect);
       const key = `cardback_${style}.png`;
       this.cardTextures.set(key, texture);
       PIXI.Assets.cache.set(key, texture);
