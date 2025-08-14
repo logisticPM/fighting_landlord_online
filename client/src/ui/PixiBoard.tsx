@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import * as PIXI from 'pixi.js';
 import { spriteSheetLoader } from '../game/SpriteSheetLoader';
 import { loadGameData, getGameData, PlayerLayout } from '../game/GameData';
-import { idToTextureKey, Entity } from '../game/cardMapping';
+import { idToTextureKey, idToSuitRank, Entity } from '../game/cardMapping';
 
 export type Snapshot = {
   id: string;
@@ -116,19 +116,25 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
   const myHand = useMemo(() => {
     if (!snap || mySeat === null) return [] as Entity[];
     const raw = snap.players.find((p) => p.seat === mySeat)?.hand || [];
-    // Sort by Dou Dizhu order: Rocket > Bomb values; 2 > A > K ... > 3
+    // Sort left->right: big -> small. Tie-break by suit for stable grouping.
     const rankValue: Record<string, number> = { '2': 15, 'A': 14, 'K': 13, 'Q': 12, 'J': 11, '10': 10, '9': 9, '8': 8, '7': 7, '6': 6, '5': 5, '4': 4, '3': 3 };
-    const getValue = (id: Entity): number => {
+    const suitValue: Record<string, number> = { spades: 4, hearts: 3, clubs: 2, diamonds: 1 };
+    const getRankScore = (id: Entity): number => {
       if (id === 54) return 17; // big joker
       if (id === 53) return 16; // small joker
-      // Map via texture key -> rank extraction
-      const key = idToTextureKey(id);
-      // Keys like "Hearts_Queen_white.png" or "Pikes_10_white.png"
-      const match = key.match(/_(A|K|Q|J|10|9|8|7|6|5|4|3|2)_/);
-      const rank = match ? match[1] : '3';
-      return rankValue[rank] || 3;
+      const { rank } = idToSuitRank(id);
+      return rank ? (rankValue[rank] ?? 3) : 3;
     };
-    return [...raw].sort((a, b) => getValue(b) - getValue(a));
+    const getSuitScore = (id: Entity): number => {
+      const { suit } = idToSuitRank(id);
+      return suit ? (suitValue[suit] ?? 0) : 0;
+    };
+    return [...raw].sort((a, b) => {
+      const ra = getRankScore(a), rb = getRankScore(b);
+      if (rb !== ra) return rb - ra;
+      const sa = getSuitScore(a), sb = getSuitScore(b);
+      return sb - sa;
+    });
   }, [snap, mySeat]);
 
   const renderScene = () => {
