@@ -216,6 +216,15 @@ export const App: React.FC = () => {
           <div className="bottom-controls">
             {snap.started ? (
               <div className="playing-controls">
+                {/* 出牌建议显示 */}
+                {snap.playSuggestion && snap.currentSeat === seat && (
+                  <div className={`play-suggestion ${snap.playSuggestion.canPlay ? 'can-play' : 'should-pass'}`}>
+                    <span className="suggestion-icon">
+                      {snap.playSuggestion.canPlay ? '💡' : '🚫'}
+                    </span>
+                    <span className="suggestion-text">{snap.playSuggestion.suggestion}</span>
+                  </div>
+                )}
                 <div className="player-action-buttons">
                   <button 
                     className="play-btn" 

@@ -14,6 +14,11 @@ export type Snapshot = {
   lastPlay: Entity[];
   lastPlayOwnerSeat: number | null;
   players: { id: string; seat: number; handCount: number; hand: Entity[] }[];
+  playSuggestion?: {
+    canPlay: boolean;
+    suggestion: string;
+    recommendedCards?: Entity[];
+  };
 };
 
 type BidState = {

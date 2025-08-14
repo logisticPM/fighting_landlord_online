@@ -427,3 +427,75 @@ button:disabled { background-color: #555; cursor: not-allowed; }
   text-align: center;
 }
 
+/* 出牌建议样式 */
+.play-suggestion {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 14px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  animation: suggestionPulse 2s ease-in-out infinite;
+}
+
+.play-suggestion.can-play {
+  background: linear-gradient(135deg, #4CAF50, #66BB6A);
+  color: white;
+  border: 2px solid #388E3C;
+}
+
+.play-suggestion.should-pass {
+  background: linear-gradient(135deg, #FF5722, #FF7043);
+  color: white;
+  border: 2px solid #D84315;
+}
+
+.suggestion-icon {
+  font-size: 18px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+.suggestion-text {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes suggestionPulse {
+  0%, 100% { 
+    transform: scale(1);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  }
+  50% { 
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* 响应式设计 - 出牌建议 */
+@media (max-width: 768px) {
+  .play-suggestion {
+    font-size: 12px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+  }
+  
+  .suggestion-icon {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .play-suggestion {
+    font-size: 11px;
+    padding: 6px 10px;
+    margin-bottom: 6px;
+  }
+  
+  .suggestion-icon {
+    font-size: 14px;
+  }
+}
+
