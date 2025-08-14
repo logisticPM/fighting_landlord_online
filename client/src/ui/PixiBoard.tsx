@@ -141,17 +141,22 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       { id: 1, x: 100, y: 200, cardSpacing: 20, scale: 0.25 },
       { id: 2, x: width-100, y: 200, cardSpacing: 20, scale: 0.25 },
     ];
-    const meCfg = layouts.find(p => p.id === (mySeat ?? 0)) ?? layouts[0];
+    // 固定：本地玩家始终使用 id=0 的底部布局
+    const meCfg = layouts.find(p => p.id === 0) ?? layouts[0];
+    const leftCfg = layouts.find(p => p.id === 1) ?? { id: 1, x: 100, y: 200, cardSpacing: 20, scale: 0.25 };
+    const rightCfg = layouts.find(p => p.id === 2) ?? { id: 2, x: width-100, y: 200, cardSpacing: 20, scale: 0.25 };
     const spacing = meCfg.cardSpacing ?? 35;
     const scale = meCfg.scale ?? 0.8;
     const baseY = meCfg.y ?? (height - 80);
-    const total = (myHand.length - 1) * spacing + 128 * scale;
+    const baseW = gd?.card?.width ?? 100;
+    const baseH = gd?.card?.height ?? 140;
+    const total = (myHand.length - 1) * spacing + baseW * scale;
     const startX = (meCfg.x ?? width/2) - total/2;
     const cardFromKey = (key: string) => {
       const tex = PIXI.Assets.cache.get(key) || spriteSheetLoader.getTexture(key) || PIXI.Texture.WHITE;
       const sp = new PIXI.Sprite(tex);
       sp.tint = tex === PIXI.Texture.WHITE ? 0xeeeeee : 0xffffff;
-      sp.width = 128; sp.height = 178;
+      sp.width = baseW; sp.height = baseH;
       return sp;
     };
 
@@ -175,24 +180,25 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       hands.addChild(sp);
     });
 
-    // Render opponents as card backs (left/right) using layout
+    // Render opponents as card backs（左/右固定，不跟随 seat 映射）
     if (snap) {
       const backTex = PIXI.Assets.cache.get('cardback.png') || spriteSheetLoader.getTexture('cardback.png') || PIXI.Texture.WHITE;
-      const opponents = snap.players.filter((p) => p.seat !== mySeat);
-      opponents.forEach((p) => {
-        const cfg = layouts.find(l => l.id === p.seat);
-        const count = p.handCount;
-        const gap = cfg?.cardSpacing ?? 20;
+      const opp = snap.players.filter((p) => p.seat !== mySeat).map(p => p.handCount);
+      const cfgs = [leftCfg, rightCfg];
+      for (let i = 0; i < cfgs.length; i++) {
+        const cfg = cfgs[i];
+        const count = opp[i] ?? 0;
+        const gap = cfg.cardSpacing ?? 20;
         for (let k = 0; k < count; k++) {
           const sp = new PIXI.Sprite(backTex);
-          if (backTex === PIXI.Texture.WHITE) { sp.width = 128; sp.height = 178; sp.tint = 0xcccccc; }
-          sp.scale.set(cfg?.scale ?? 0.25);
-          const isLeft = (cfg?.x ?? 0) < width/2;
-          if (isLeft) sp.position.set(cfg?.x ?? 100, (cfg?.y ?? 200) + k * gap);
-          else sp.position.set((cfg?.x ?? width-100) - sp.width, (cfg?.y ?? 200) + k * gap);
+          if (backTex === PIXI.Texture.WHITE) { sp.width = baseW; sp.height = baseH; sp.tint = 0xcccccc; }
+          sp.scale.set(cfg.scale ?? 0.25);
+          const isLeft = (cfg.x ?? 0) < width/2;
+          if (isLeft) sp.position.set(cfg.x ?? 100, (cfg.y ?? 200) + k * gap);
+          else sp.position.set((cfg.x ?? width-100) - sp.width, (cfg.y ?? 200) + k * gap);
           hands.addChild(sp);
         }
-      });
+      }
     }
 
     // Render last play in center with simple fade/move animation
@@ -221,8 +227,8 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       const tex = PIXI.Assets.cache.get(key) || spriteSheetLoader.getTexture(key) || PIXI.Texture.WHITE;
       const group = new PIXI.Container();
       group.sortableChildren = true;
-      const w = 128 * scaleVal;
-      const h = 178 * scaleVal;
+      const w = baseW * scaleVal;
+      const h = baseH * scaleVal;
       // shadow
       const shadow = new PIXI.Graphics();
       shadow.beginFill(0x000000, 0.18);
@@ -260,7 +266,7 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       if (newKey !== lastPlayKeyRef.current) {
         const centerY = height / 2 - 90;
         const centerSpacing = 40;
-        const totalWidth = (snap.lastPlay.length - 1) * centerSpacing + 128 * 0.82;
+        const totalWidth = (snap.lastPlay.length - 1) * centerSpacing + baseW * 0.82;
         const cxStart = (width - totalWidth) / 2;
 
         // 如果是我出的牌：从手牌位置飞向中央
@@ -326,7 +332,7 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       const cfg = gd?.layout?.landlord_cards ?? { x: width/2, y: 120, spacing: 25 } as any;
       const s = meCfg.scale ?? 0.8;
       const spacing2 = cfg.spacing ?? 25;
-      const totalWidth = (list.length - 1) * spacing2 + 128 * s;
+      const totalWidth = (list.length - 1) * spacing2 + baseW * s;
       const startX = (cfg.x ?? width/2) - totalWidth / 2;
       const y = cfg.y ?? 120;
       list.forEach((id, idx) => {
