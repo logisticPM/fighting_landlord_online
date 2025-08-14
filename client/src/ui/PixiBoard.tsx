@@ -292,17 +292,15 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       const sp = new PIXI.Sprite(tex); 
       sp.anchor.set(0.5); 
       
-      // Use the original working approach but improve the scaling
-      if (tex !== PIXI.Texture.WHITE && tex.valid) {
-        // For actual images, scale to fill circle while maintaining aspect ratio
+      // Simple and reliable scaling - back to working approach
+      if (tex !== PIXI.Texture.WHITE) {
+        // For loaded images, scale to fill circle
         const scaleToFill = Math.max((r * 2) / tex.width, (r * 2) / tex.height);
         sp.scale.set(scaleToFill);
       } else {
-        // Fallback: create colored circle to distinguish roles
+        // For fallback white texture, use fixed size without tint
         sp.width = r * 2; 
         sp.height = r * 2;
-        // Tint the white texture to show role difference
-        sp.tint = isLandlord ? 0xff6b35 : 0x4a90e2; // Orange for landlord, blue for farmer
       }
       sp.mask = mask;
       const ringColor = isLandlord ? 0xf59e0b : 0x1f2937;
@@ -322,26 +320,18 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
     const myAvatarY = (meCfg.y ?? (height - 80)) - (avatarR + 12);
     drawAvatar(meCfg.x ?? width/2, myAvatarY, mySeatVal);
     
-    // Left/Right avatars vertically centered to avoid overlap with table bevel
-    // Always draw all 3 players: me + 2 others
-    console.log('Avatar rendering:', { mySeatVal, otherSeats, allPlayers: snap?.players?.map(p => p.seat) });
+    // Left/Right avatars - only draw players that actually exist
+    console.log('Avatar rendering:', { mySeatVal, otherSeats, playerCount: snap?.players?.length });
     
-    // For a 3-player game, we need to render all seats 0, 1, 2
-    // Draw all 3 seats explicitly
-    for (let seat = 0; seat < 3; seat++) {
-      if (seat === mySeatVal) {
-        // My avatar (already drawn above)
-        continue;
-      }
-      
-      // Determine position for other players
-      const isLeftPosition = otherSeats.indexOf(seat) === 0;
+    // Draw other players that actually exist in the room
+    otherSeats.forEach((seat, index) => {
+      const isLeftPosition = index === 0; // First other player goes left, second goes right
       const x = isLeftPosition ? (leftCfgAv.x ?? 140) : (rightCfgAv.x ?? (width-140));
       const y = isLeftPosition ? (leftCfgAv.y ?? height/2) : (rightCfgAv.y ?? height/2);
       
-      console.log(`Drawing other player seat ${seat} at position ${isLeftPosition ? 'left' : 'right'}`);
+      console.log(`Drawing existing player seat ${seat} at position ${isLeftPosition ? 'left' : 'right'}`);
       drawAvatar(x, y, seat);
-    }
+    });
 
     // Render opponents as card backs（左/右固定，不跟随 seat 映射）
     if (snap) {
