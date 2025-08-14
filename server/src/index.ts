@@ -184,6 +184,13 @@ function snapshot(room: RoomState, forSocket: string) {
   };
 }
 
+// Send per-socket tailored snapshot so each player sees their own hand
+function broadcastSnapshot(room: RoomState, event: 'room:update' | 'game:started' | 'game:update') {
+  for (const p of room.players) {
+    io.to(p.socketId).emit(event, snapshot(room, p.socketId));
+  }
+}
+
 io.on('connection', (socket) => {
   socket.on('room:join', ({ roomId }: { roomId?: string }, cb?: (ret: any) => void) => {
     const id = roomId && roomId.length > 0 ? roomId : uuidv4().slice(0, 6);
@@ -196,7 +203,7 @@ io.on('connection', (socket) => {
     socket.join(id);
     cb?.({ ok: true, roomId: id, seat });
 
-    io.to(id).emit('room:update', snapshot(room, socket.id));
+    broadcastSnapshot(room, 'room:update');
 
     if (room.players.length === 3) {
       const deck = createDeck();
@@ -210,7 +217,7 @@ io.on('connection', (socket) => {
       room.lastPlay = [];
       room.lastPlayOwnerSeat = null;
       room.passCount = 0;
-      io.to(id).emit('game:started', snapshot(room, socket.id));
+      broadcastSnapshot(room, 'game:started');
     }
   });
 
@@ -233,7 +240,7 @@ io.on('connection', (socket) => {
     room.currentSeat = (room.currentSeat + 1) % 3;
     room.passCount = 0;
 
-    io.to(roomId).emit('game:update', snapshot(room, socket.id));
+    broadcastSnapshot(room, 'game:update');
     cb?.({ ok: true });
 
     if (player.hand.length === 0) {
@@ -259,7 +266,7 @@ io.on('connection', (socket) => {
       room.lastPlayOwnerSeat = null;
       room.passCount = 0;
     }
-    io.to(roomId).emit('game:update', snapshot(room, socket.id));
+    broadcastSnapshot(room, 'game:update');
     cb?.({ ok: true });
   });
 
@@ -269,7 +276,7 @@ io.on('connection', (socket) => {
       if (idx >= 0) {
         const roomId = room.id;
         room.players.splice(idx, 1);
-        io.to(roomId).emit('room:update', snapshot(room, socket.id));
+        broadcastSnapshot(room, 'room:update');
         if (room.players.length === 0) rooms.delete(roomId);
         break;
       }
