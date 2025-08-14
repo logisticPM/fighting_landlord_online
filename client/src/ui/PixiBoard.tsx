@@ -39,14 +39,20 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       await spriteSheetLoader.loadSpriteSheets();
       if (disposed) return;
 
+      // Load GameData early for world size/background
+      try { await loadGameData(); } catch {}
+      const gdata = getGameData();
+      const viewW = gdata?.world?.width ?? width;
+      const viewH = gdata?.world?.height ?? height;
+
       // Support both Pixi v7 (no async init) and v8 (async init)
       const hasAsyncInit = typeof (PIXI as any).Application?.prototype?.init === 'function';
       let app: any;
       if (hasAsyncInit) {
         app = new (PIXI as any).Application();
-        await app.init({ width, height, background: 0xffffff, antialias: true });
+        await app.init({ width: viewW, height: viewH, background: 0xffffff, antialias: true });
       } else {
-        app = new (PIXI as any).Application({ width, height, backgroundColor: 0xffffff, antialias: true });
+        app = new (PIXI as any).Application({ width: viewW, height: viewH, backgroundColor: 0xffffff, antialias: true });
       }
       appRef.current = app as PIXI.Application;
 
@@ -58,31 +64,29 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       app.stage.addChild(table, center, hands, fx);
       layersRef.current = { table, hands, center, fx };
 
-      // Background image (locked to background3.png as requested)
+      // Background image (prefer GameData texturePath.background)
       try {
-        const bg = await PIXI.Assets.load('/GameAssets/images/background3.png');
+        const bgPath = gdata?.texturePath?.background ?? '/GameAssets/images/background3.png';
+        const bg = await PIXI.Assets.load(bgPath);
         const bgSprite = new PIXI.Sprite(bg as PIXI.Texture);
-        bgSprite.width = width;
-        bgSprite.height = height;
+        bgSprite.width = viewW;
+        bgSprite.height = viewH;
         bgSprite.position.set(0, 0);
         table.addChild(bgSprite);
       } catch {}
-
-      // Load GameData for layout mapping
-      try { await loadGameData(); } catch {}
 
       if (containerRef.current) {
         const canvasEl: HTMLCanvasElement | undefined = (app as any).view ?? (app as any).canvas;
         // Ensure container has explicit size so canvas is visible
         try {
-          (containerRef.current as HTMLDivElement).style.width = `${width}px`;
-          (containerRef.current as HTMLDivElement).style.height = `${height}px`;
+          (containerRef.current as HTMLDivElement).style.width = `${viewW}px`;
+          (containerRef.current as HTMLDivElement).style.height = `${viewH}px`;
         } catch {}
         if (canvasEl) {
           try {
             canvasEl.style.display = 'block';
-            canvasEl.style.width = `${width}px`;
-            canvasEl.style.height = `${height}px`;
+            canvasEl.style.width = `${viewW}px`;
+            canvasEl.style.height = `${viewH}px`;
           } catch {}
           containerRef.current.appendChild(canvasEl);
         } else {
