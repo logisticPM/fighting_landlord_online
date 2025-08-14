@@ -34,9 +34,16 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       await spriteSheetLoader.loadSpriteSheets();
       if (disposed) return;
 
-      const app = new PIXI.Application();
-      await app.init({ width, height, background: 0x0f172a, antialias: true });
-      appRef.current = app;
+      // Support both Pixi v7 (no async init) and v8 (async init)
+      const hasAsyncInit = typeof (PIXI as any).Application?.prototype?.init === 'function';
+      let app: any;
+      if (hasAsyncInit) {
+        app = new (PIXI as any).Application();
+        await app.init({ width, height, background: 0x0f172a, antialias: true });
+      } else {
+        app = new (PIXI as any).Application({ width, height, backgroundColor: 0x0f172a, antialias: true });
+      }
+      appRef.current = app as PIXI.Application;
 
       const table = new PIXI.Container();
       const hands = new PIXI.Container();
