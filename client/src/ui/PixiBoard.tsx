@@ -32,6 +32,8 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
   const lastPlayKeyRef = useRef<string>('');
   const animatingIdsRef = useRef<Set<Entity>>(new Set());
   const prevHandRef = useRef<Entity[]>([]);
+  const avatarRingsRef = useRef<Map<number, PIXI.Graphics>>(new Map());
+  const snapRef = useRef<Snapshot | null>(null);
 
   useEffect(() => {
     let disposed = false;
@@ -66,6 +68,18 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       // Order: table < bottom (landlord cards) < center (last plays) < hands < fx < ui
       app.stage.addChild(table, bottom, center, hands, fx, ui);
       layersRef.current = { table, bottom, hands, center, fx, ui };
+
+      // Ticker for avatar ring blink on current turn
+      (appRef.current as any).ticker.add(() => {
+        const s = snapRef.current;
+        if (!s) return;
+        const now = performance.now();
+        const pulse = 0.6 + 0.4 * Math.sin(now / 300);
+        avatarRingsRef.current.forEach((ring, seatNum) => {
+          if (!ring) return;
+          if (seatNum === s.currentSeat) ring.alpha = pulse; else ring.alpha = 1;
+        });
+      });
 
       // Background image (prefer GameData texturePath.background)
       try {
@@ -143,10 +157,12 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
     const app = appRef.current;
     const layers = layersRef.current;
     if (!app || !layers) return;
+    snapRef.current = snap || null;
 
     const { hands, center, bottom, fx, ui } = layers;
     hands.removeChildren();
     ui.removeChildren();
+    avatarRingsRef.current.clear();
     // If not in playing phase or there is no last play, ensure center is cleared to avoid any stale cards
     if (!snap || !snap.lastPlay || snap.lastPlay.length === 0) {
       center.removeChildren();
@@ -231,9 +247,11 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       const mask = new PIXI.Graphics();
       mask.beginFill(0xffffff, 1).drawCircle(0, 0, r).endFill();
       const sp = new PIXI.Sprite(tex); sp.anchor.set(0.5); sp.width = r * 2; sp.height = r * 2; sp.mask = mask;
-      const ring = new PIXI.Graphics(); ring.lineStyle(4, isLandlord ? 0xf59e0b : 0x1f2937, 1).drawCircle(0, 0, r + 1);
+      const ringColor = isLandlord ? 0xf59e0b : 0x1f2937;
+      const ring = new PIXI.Graphics(); ring.lineStyle(5, ringColor, 1).drawCircle(0, 0, r + 1);
       const cap = new PIXI.Text(`S${seatNum}`, { fontFamily: 'Arial', fontSize: 12, fill: 0xffffff }); cap.anchor.set(0.5, 0); cap.position.set(0, r + 6);
       wrap.addChild(shadow, sp, mask, ring, cap); ui.addChild(wrap);
+      avatarRingsRef.current.set(seatNum, ring);
     };
     const leftCfgAv = layouts.find(p => p.id === 1) ?? { id:1, x: 140, y: height/2, cardSpacing: 20, scale: 0.25 };
     const rightCfgAv = layouts.find(p => p.id === 2) ?? { id:2, x: width-140, y: height/2, cardSpacing: 20, scale: 0.25 };
