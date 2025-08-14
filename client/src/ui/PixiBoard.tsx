@@ -53,6 +53,7 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       const table = new PIXI.Container();
       const hands = new PIXI.Container();
       const center = new PIXI.Container();
+      center.sortableChildren = true;
       const fx = new PIXI.Container();
       app.stage.addChild(table, center, hands, fx);
       layersRef.current = { table, hands, center, fx };
@@ -216,6 +217,30 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       requestAnimationFrame(tick);
     };
 
+    const createFramedCard = (key: string, scaleVal = 0.82): PIXI.Container => {
+      const tex = PIXI.Assets.cache.get(key) || spriteSheetLoader.getTexture(key) || PIXI.Texture.WHITE;
+      const group = new PIXI.Container();
+      group.sortableChildren = true;
+      const w = 128 * scaleVal;
+      const h = 178 * scaleVal;
+      // shadow
+      const shadow = new PIXI.Graphics();
+      shadow.beginFill(0x000000, 0.18);
+      shadow.drawRoundedRect(4, 6, w, h, 10);
+      shadow.endFill();
+      shadow.zIndex = 0;
+      // sprite
+      const sp = new PIXI.Sprite(tex);
+      sp.width = w; sp.height = h; sp.x = 0; sp.y = 0; sp.alpha = 1; sp.zIndex = 1;
+      // frame
+      const frame = new PIXI.Graphics();
+      frame.lineStyle(2, 0x1f2937, 1); // 深色描边
+      frame.drawRoundedRect(0, 0, w, h, 10);
+      frame.zIndex = 2;
+      group.addChild(shadow, sp, frame);
+      return group;
+    };
+
     const buildLastPlayKey = () => (snap ? `${snap.lastPlayOwnerSeat}|${(snap.lastPlay||[]).join(',')}` : '');
     const newKey = buildLastPlayKey();
 
@@ -252,10 +277,9 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
               // 动画结束后，渲染最终中央牌并清除 hand 动画标记
               center.removeChildren();
               ids.forEach((id, idx) => {
-                const s2 = cardFromKey(idToTextureKey(id));
-                s2.scale.set(0.82);
-                s2.position.set(cxStart + idx * centerSpacing, centerY);
-                center.addChild(s2);
+                const group = createFramedCard(idToTextureKey(id), 0.82);
+                group.x = cxStart + idx * centerSpacing; group.y = centerY; group.alpha = 1; group.zIndex = 10 + idx;
+                center.addChild(group);
                 animatingIdsRef.current.delete(id);
               });
               lastPlayKeyRef.current = newKey;
@@ -268,10 +292,8 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
             const prevIndex = prev.indexOf(id);
             const startPosX = prevIndex >= 0 ? (startX + prevIndex * spacing) : (cxStart + idx * centerSpacing);
             const startPosY = prevIndex >= 0 ? baseY : centerY + 20;
-            const ghost = cardFromKey(idToTextureKey(id));
-            ghost.scale.set(scale);
-            ghost.alpha = 1;
-            ghost.position.set(startPosX, startPosY);
+            const ghost = createFramedCard(idToTextureKey(id), scale);
+            ghost.x = startPosX; ghost.y = startPosY; ghost.alpha = 1; ghost.zIndex = 100 + idx;
             fx.addChild(ghost);
             animate(ghost, { x: cxStart + idx * centerSpacing, y: centerY, alpha: 1, scale: 0.82 }, 280, () => {
               fx.removeChild(ghost);
@@ -282,13 +304,11 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
           // 非我方出牌：原地淡入
           center.removeChildren();
           (snap.lastPlay as Entity[]).forEach((id, idx) => {
-            const key = idToTextureKey(id);
-            const sp = cardFromKey(key);
-            sp.scale.set(0.82);
-            sp.alpha = 0;
-            sp.position.set(cxStart + idx * centerSpacing, centerY + 20);
-            center.addChild(sp);
-            animate(sp, { x: cxStart + idx * centerSpacing, y: centerY, alpha: 1 }, 260);
+            const group = createFramedCard(idToTextureKey(id), 0.82);
+            group.alpha = 0;
+            group.x = cxStart + idx * centerSpacing; group.y = centerY + 20; group.zIndex = 10 + idx;
+            center.addChild(group);
+            animate(group, { x: cxStart + idx * centerSpacing, y: centerY, alpha: 1 }, 260);
           });
           lastPlayKeyRef.current = newKey;
         }

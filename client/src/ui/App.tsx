@@ -93,15 +93,36 @@ export const App: React.FC = () => {
 
       {/* Bidding UI */}
       {snap && bidState && (
-        <div style={{ marginTop: 12, padding: 8, background: '#fff', display: 'inline-block', border: '1px solid #ccc' }}>
-          <div>Bid turn: Seat {bidState.biddingSeat} | Current bid: {bidState.currentBid} | Time: {bidState.secondsRemaining ?? 10}s</div>
-          {seat === bidState.biddingSeat && (
-            <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-              {[0,1,2,3].map(v => (
-                <button key={v} onClick={() => socket?.emit('bidding:bid', { roomId, amount: v }, () => {})} disabled={v<= (bidState?.currentBid ?? 0) && v!==0}>{v===0?'Pass':`Bid ${v}`}</button>
-              ))}
-            </div>
-          )}
+        <div style={{ marginTop: 12, padding: 10, background: '#fff', display: 'inline-block', border: '1px solid #e5e7eb', borderRadius: 6, boxShadow: '0 2px 8px rgba(0,0,0,.08)' }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <strong>Current bid:</strong> <span style={{ fontSize: 18 }}>{bidState.currentBid}</span>
+            <span>|</span>
+            <strong>Turn:</strong> <span style={{ padding: '2px 6px', borderRadius: 4, background: '#eff6ff', color: '#1d4ed8' }}>Seat {bidState.biddingSeat}</span>
+            <span>|</span>
+            <strong>Time:</strong> <span style={{ fontVariantNumeric: 'tabular-nums' }}>{bidState.secondsRemaining ?? 10}s</span>
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            {[0,1,2,3].map(v => {
+              const disabled = seat !== bidState.biddingSeat || (v <= (bidState?.currentBid ?? 0) && v !== 0);
+              return (
+                <button
+                  key={v}
+                  onClick={() => socket?.emit('bidding:bid', { roomId, amount: v }, () => {})}
+                  disabled={disabled}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 4,
+                    background: disabled ? '#e5e7eb' : (v===0 ? '#f3f4f6' : '#1d4ed8'),
+                    color: disabled ? '#9ca3af' : (v===0 ? '#111827' : '#fff'),
+                    border: '1px solid #d1d5db',
+                    cursor: disabled ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {v===0?'Pass':`Bid ${v}`}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
