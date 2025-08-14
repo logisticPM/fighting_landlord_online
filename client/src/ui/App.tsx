@@ -41,6 +41,10 @@ export const App: React.FC = () => {
     s.on('bidding:state', (st: { biddingSeat: number; currentBid: number; secondsRemaining?: number }) => setBidState(st));
     s.on('bidding:ended', (_: any) => setBidState(null));
     s.on('game:ended', (payload: any) => alert(`Winner seat: ${payload.winnerSeat}`));
+    s.on('game:redeal', (payload: any) => {
+      alert(payload.message || 'All players passed. Redealing cards...');
+      setSelected(new Set()); // Clear any selection
+    });
     return () => {
       try { s.disconnect(); } catch { /* noop */ }
     };
@@ -85,15 +89,10 @@ export const App: React.FC = () => {
 
   const play = (cards: Entity[]) => {
     if (!socket || !roomId || cards.length === 0) return;
-    console.log('Attempting to play cards:', cards);
-    console.log('My hand:', myHand);
-    console.log('Selected set:', selected);
     socket.emit('play:cards', { roomId, cards }, (ret: any) => {
       if (!ret?.ok) {
-        console.error('Play failed:', ret?.error);
         alert(ret?.error || 'invalid play');
       } else {
-        console.log('Play succeeded');
         setSelected(new Set()); // Clear selection after successful play
       }
     });
@@ -155,10 +154,25 @@ export const App: React.FC = () => {
             {snap.started ? (
               <div className="playing-controls">
                 <div className="player-action-buttons">
-                  <button className="play-btn" onClick={() => play(Array.from(selected))} disabled={selected.size === 0}>Play</button>
-                  <button className="pass-btn" onClick={() => pass()}>Pass</button>
+                  <button 
+                    className="play-btn" 
+                    onClick={() => play(Array.from(selected))} 
+                    disabled={selected.size === 0 || snap.currentSeat !== seat}
+                  >
+                    Play
+                  </button>
+                  <button 
+                    className="pass-btn" 
+                    onClick={() => pass()} 
+                    disabled={snap.currentSeat !== seat || (snap.lastPlay.length === 0 || snap.lastPlayOwnerSeat === seat)}
+                  >
+                    Pass
+                  </button>
                   <button onClick={() => setSelected(new Set())}>Clear</button>
                 </div>
+                {snap.currentSeat !== seat && (
+                  <div className="waiting-indicator">Waiting for player {snap.currentSeat}...</div>
+                )}
               </div>
             ) : (
               bidState ? (

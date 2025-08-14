@@ -45,6 +45,7 @@ interface RoomState {
   provisionalLandlordSeat: number | null;
   biddingDeadline?: number;
   turnDeadline?: number;
+  bidHistory?: { seat: number; amount: number }[];
 }
 
 const app = express();
@@ -263,10 +264,6 @@ io.on('connection', (socket) => {
     if (!player) return cb?.({ ok: false, error: 'No player' });
     if (room.currentSeat !== player.seat) return cb?.({ ok: false, error: 'Not your turn' });
 
-    console.log(`Player seat ${player.seat} trying to play cards:`, cards);
-    console.log(`Player hand:`, player.hand);
-    console.log(`Cards in hand check:`, cards.map(c => ({ card: c, inHand: player.hand.includes(c) })));
-
     if (!cards.every((c) => player.hand.includes(c))) return cb?.({ ok: false, error: 'Cards not in hand' });
 
     // Use full rules
@@ -363,6 +360,43 @@ function startPlaying(room: RoomState) {
   scheduleTurnTimeout(room.id);
 }
 
+function redealRoom(room: RoomState) {
+  console.log(`[redealRoom] Redealing room ${room.id} - all players passed`);
+  
+  // Reset room state to bidding phase
+  room.bidding = true;
+  room.started = false;
+  room.currentBid = 0;
+  room.landlordSeat = null;
+  room.provisionalLandlordSeat = null;
+  room.lastPlay = [];
+  room.lastPlayOwnerSeat = null;
+  room.passCount = 0;
+  room.bidHistory = [];
+  
+  // Redeal cards
+  const deck = createDeck();
+  const { hands, bottom } = deal(deck);
+  room.bottomCards = bottom;
+  
+  // Distribute new hands
+  for (let i = 0; i < 3; i++) {
+    room.players[i].hand = hands[i];
+  }
+  
+  // Start new bidding round with random starting player
+  room.biddingSeat = Math.floor(Math.random() * 3);
+  room.biddingDeadline = Date.now() + BIDDING_SECONDS * 1000;
+  
+  // Notify all players about redeal
+  io.to(room.id).emit('game:redeal', { message: 'All players passed. Redealing cards...' });
+  io.to(room.id).emit('bidding:started', { biddingSeat: room.biddingSeat, currentBid: room.currentBid, secondsRemaining: BIDDING_SECONDS });
+  
+  // Send updated room state
+  broadcastSnapshot(room, 'room:update');
+  scheduleBiddingTimeout(room.id);
+}
+
 function scheduleBiddingTimeout(roomId: string) {
   clearBiddingTimer(roomId);
   const room = rooms.get(roomId);
@@ -441,6 +475,17 @@ function handleBid(room: RoomState, seat: number, amount: number) {
     io.to(room.id).emit('bidding:ended', { landlordSeat: room.landlordSeat, currentBid: room.currentBid });
     broadcastSnapshot(room, 'game:started');
     clearBiddingTimer(room.id);
+    return;
+  }
+
+  // 检查是否所有人都叫过了但没人叫地主（需要追踪叫分历史）
+  if (!room.bidHistory) room.bidHistory = [];
+  room.bidHistory.push({ seat, amount });
+  
+  // 如果三个人都叫过且没人叫地主，重新发牌
+  if (room.bidHistory.length >= 3 && room.currentBid === 0) {
+    console.log('All players passed, redealing...');
+    redealRoom(room);
     return;
   }
 
