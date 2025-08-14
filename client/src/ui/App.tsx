@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import io, { Socket } from 'socket.io-client';
 import { PixiBoard } from './PixiBoard';
+import { PlayerAvatar } from './PlayerAvatar';
 
 const SERVER_URL = (import.meta as any).env?.VITE_SERVER_URL || 'http://localhost:5179';
 
@@ -20,6 +21,11 @@ type Snapshot = {
   lastPlayOwnerSeat: number | null;
   players: { id: string; seat: number; handCount: number; hand: Entity[] }[];
   turnSecondsRemaining?: number;
+  playSuggestion?: {
+    canPlay: boolean;
+    suggestion: string;
+    recommendedCards?: number[];
+  };
 };
 
 export const App: React.FC = () => {
@@ -176,6 +182,44 @@ export const App: React.FC = () => {
             });
           }}
         />
+      )}
+
+      {/* React DOM Avatar Overlay - Positioned over PIXI canvas */}
+      {snap && seat !== null && (
+        <div className="avatar-overlay">
+          {snap.players.map((player) => {
+            const isLandlord = snap.landlordSeat === player.seat;
+            const isCurrentPlayer = snap.currentSeat === player.seat;
+            
+            // Calculate avatar positions - matching PIXI layout
+            let avatarX: number, avatarY: number;
+            
+            if (player.seat === seat) {
+              // My avatar - bottom center
+              avatarX = window.innerWidth / 2;
+              avatarY = window.innerHeight - 120;
+            } else {
+              // Other players - left and right positions
+              const otherSeats = snap.players.filter(p => p.seat !== seat).map(p => p.seat).sort();
+              const isLeftPosition = otherSeats.indexOf(player.seat) === 0;
+              
+              avatarX = isLeftPosition ? 140 : window.innerWidth - 140;
+              avatarY = window.innerHeight / 2;
+            }
+            
+            return (
+              <PlayerAvatar
+                key={player.seat}
+                seat={player.seat}
+                isLandlord={isLandlord}
+                isCurrentPlayer={isCurrentPlayer}
+                x={avatarX}
+                y={avatarY}
+                size={72}
+              />
+            );
+          })}
+        </div>
       )}
 
       {/* React HUD overlay */}

@@ -45,7 +45,7 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
   const lastPlayKeyRef = useRef<string>('');
   const animatingIdsRef = useRef<Set<Entity>>(new Set());
   const prevHandRef = useRef<Entity[]>([]);
-  const avatarRingsRef = useRef<Map<number, PIXI.Graphics>>(new Map());
+  // ✅ Removed avatarRingsRef - avatars now handled by React DOM
   const snapRef = useRef<Snapshot | null>(null);
 
   useEffect(() => {
@@ -191,7 +191,7 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
     const { hands, center, bottom, fx, ui } = layers;
     hands.removeChildren();
     ui.removeChildren();
-    avatarRingsRef.current.clear();
+    // ✅ Removed avatar rings clearing - no longer using PIXI avatars
     // If not in playing phase or there is no last play, ensure center is cleared to avoid any stale cards
     if (!snap || !snap.lastPlay || snap.lastPlay.length === 0) {
       center.removeChildren();
@@ -275,80 +275,13 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       hands.addChild(group);
     });
 
-    // Avatars with landlord/farmer images
-    const loadAvatarTexture = (role: 'landlord' | 'farmer'): PIXI.Texture => {
-      const p = role === 'landlord' ? '/avatars/landlord.png' : '/avatars/farmer.png';
-      
-      // Use Texture.from directly to avoid PIXI.Assets cache warning logs
-      try { 
-        const tex = PIXI.Texture.from(p);
-        return tex;
-      } catch (error) { 
-        console.error(`Failed to load ${role} avatar:`, error);
-        return PIXI.Texture.WHITE; 
-      }
-    };
-    const drawAvatar = (x: number, y: number, seatNum: number) => {
-      const isLandlord = snap?.landlordSeat !== null && snap?.landlordSeat !== undefined && seatNum === (snap?.landlordSeat as number);
-      
-      // Debug logging for landlord assignment
-      console.log(`Avatar ${seatNum}: landlordSeat=${snap?.landlordSeat}, isLandlord=${isLandlord}, role=${isLandlord ? 'LANDLORD' : 'farmer'}`);
-      if (snap?.started && snap?.landlordSeat === null) {
-        console.warn('Game started but no landlord assigned!');
-      }
-      
-      const tex = loadAvatarTexture(isLandlord ? 'landlord' : 'farmer');
-      // Scale avatar radius relative to card height for better visibility
-      const r = Math.max(36, Math.round(baseH * 0.26));
-      const wrap = new PIXI.Container();
-      wrap.position.set(x, y);
-      const shadow = new PIXI.Graphics();
-      shadow.beginFill(0x000000, 0.15).drawCircle(0, 2, r + 2).endFill();
-      const mask = new PIXI.Graphics();
-      mask.beginFill(0xffffff, 1).drawCircle(0, 0, r).endFill();
-      const sp = new PIXI.Sprite(tex); 
-      sp.anchor.set(0.5); 
-      
-      // Simple and reliable scaling - back to working approach
-      if (tex !== PIXI.Texture.WHITE) {
-        // For loaded images, scale to fill circle
-        const scaleToFill = Math.max((r * 2) / tex.width, (r * 2) / tex.height);
-        sp.scale.set(scaleToFill);
-      } else {
-        // For fallback white texture, use fixed size without tint
-        sp.width = r * 2; 
-        sp.height = r * 2;
-      }
-      sp.mask = mask;
-      const ringColor = isLandlord ? 0xf59e0b : 0x1f2937;
-      const ring = new PIXI.Graphics(); ring.lineStyle(5, ringColor, 1).drawCircle(0, 0, r + 1);
-      const cap = new PIXI.Text(`S${seatNum}`, { fontFamily: 'Arial', fontSize: 12, fill: 0xffffff }); cap.anchor.set(0.5, 0); cap.position.set(0, r + 6);
-      wrap.addChild(shadow, sp, mask, ring, cap); ui.addChild(wrap);
-      avatarRingsRef.current.set(seatNum, ring);
-    };
+    // ✅ AVATARS NOW RENDERED BY REACT DOM - REMOVED PIXI AVATAR CODE
+    // Avatars are now handled by React DOM overlay for better compatibility and easier styling
+    // ✅ Avatar positioning variables kept for opponent card layout reference
     const leftCfgAv = layouts.find(p => p.id === 1) ?? { id:1, x: 140, y: height/2, cardSpacing: 20, scale: 0.25 };
     const rightCfgAv = layouts.find(p => p.id === 2) ?? { id:2, x: width-140, y: height/2, cardSpacing: 20, scale: 0.25 };
     const mySeatVal = mySeat ?? 0; 
     const otherSeats = (snap?.players || []).map(p => p.seat).filter(s => s !== mySeatVal).sort((a,b)=>a-b);
-    
-    // Place my avatar strictly below the hand row: baseY + cardHeight*scale + radius + margin
-    // Place my avatar safely above the bottom edge (avoid clipping)
-    const avatarR = Math.max(36, Math.round(baseH * 0.26));
-    const myAvatarY = (meCfg.y ?? (height - 80)) - (avatarR + 12);
-    drawAvatar(meCfg.x ?? width/2, myAvatarY, mySeatVal);
-    
-    // Left/Right avatars - only draw players that actually exist
-    console.log('Avatar rendering:', { mySeatVal, otherSeats, playerCount: snap?.players?.length });
-    
-    // Draw other players that actually exist in the room
-    otherSeats.forEach((seat, index) => {
-      const isLeftPosition = index === 0; // First other player goes left, second goes right
-      const x = isLeftPosition ? (leftCfgAv.x ?? 140) : (rightCfgAv.x ?? (width-140));
-      const y = isLeftPosition ? (leftCfgAv.y ?? height/2) : (rightCfgAv.y ?? height/2);
-      
-      console.log(`Drawing existing player seat ${seat} at position ${isLeftPosition ? 'left' : 'right'}`);
-      drawAvatar(x, y, seat);
-    });
 
     // Render opponents as card backs（左/右固定，不跟随 seat 映射）
     if (snap) {
@@ -535,12 +468,12 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [snap, mySeat, selected]);
 
-  // Calculate avatar positions for bid buttons
+  // ✅ Calculate React avatar positions for bid buttons overlay
   const getAvatarPositions = () => {
     if (!snap) return [];
     
     const positions = [];
-    const myAvatarY = height - 80 - 36 - 12; // Same as in renderScene
+    const myAvatarY = height - 120; // React avatar position
     const leftAvatarX = 140;
     const rightAvatarX = width - 140;
     const centerAvatarY = height / 2;
