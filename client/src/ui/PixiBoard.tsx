@@ -51,7 +51,15 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       app.stage.addChild(table, center, hands);
       layersRef.current = { table, hands, center };
 
-      // Title omitted to avoid Text plugin dependency
+      // Background image (fit to canvas)
+      try {
+        const bg = await PIXI.Assets.load('/GameAssets/images/background3.png');
+        const bgSprite = new PIXI.Sprite(bg as PIXI.Texture);
+        bgSprite.width = width;
+        bgSprite.height = height;
+        bgSprite.position.set(0, 0);
+        table.addChild(bgSprite);
+      } catch {}
 
       if (containerRef.current) {
         const canvasEl: HTMLCanvasElement | undefined = (app as any).view ?? (app as any).canvas;
@@ -92,7 +100,20 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
 
   const myHand = useMemo(() => {
     if (!snap || mySeat === null) return [] as Entity[];
-    return snap.players.find((p) => p.seat === mySeat)?.hand || [];
+    const raw = snap.players.find((p) => p.seat === mySeat)?.hand || [];
+    // Sort by Dou Dizhu order: Rocket > Bomb values; 2 > A > K ... > 3
+    const rankValue: Record<string, number> = { '2': 15, 'A': 14, 'K': 13, 'Q': 12, 'J': 11, '10': 10, '9': 9, '8': 8, '7': 7, '6': 6, '5': 5, '4': 4, '3': 3 };
+    const getValue = (id: Entity): number => {
+      if (id === 54) return 17; // big joker
+      if (id === 53) return 16; // small joker
+      // Map via texture key -> rank extraction
+      const key = idToTextureKey(id);
+      // Keys like "Hearts_Queen_white.png" or "Pikes_10_white.png"
+      const match = key.match(/_(A|K|Q|J|10|9|8|7|6|5|4|3|2)_/);
+      const rank = match ? match[1] : '3';
+      return rankValue[rank] || 3;
+    };
+    return [...raw].sort((a, b) => getValue(b) - getValue(a));
   }, [snap, mySeat]);
 
   const renderScene = () => {
