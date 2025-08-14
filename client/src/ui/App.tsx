@@ -55,7 +55,12 @@ export const App: React.FC = () => {
     
     // Game event handlers
     s.on('room:update', (sn: Snapshot) => setSnap(sn));
-    s.on('game:started', (sn: Snapshot) => setSnap(sn));
+    s.on('game:started', (sn: Snapshot) => {
+      console.log('Game started! Landlord seat:', sn.landlordSeat);
+      setSnap(sn);
+      // Force re-render after game starts to ensure correct avatar display
+      setTimeout(() => setSnap({...sn}), 50);
+    });
     s.on('game:update', (sn: Snapshot) => setSnap(sn));
     s.on('bidding:started', (st: { biddingSeat: number; currentBid: number; secondsRemaining?: number }) => setBidState(st));
     s.on('bidding:state', (st: { biddingSeat: number; currentBid: number; secondsRemaining?: number }) => setBidState(st));

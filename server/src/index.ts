@@ -484,7 +484,9 @@ function handleBid(room: RoomState, seat: number, amount: number) {
   if (room.currentBid === 3) {
     startPlaying(room);
     io.to(room.id).emit('bidding:ended', { landlordSeat: room.landlordSeat, currentBid: room.currentBid });
+    // CRITICAL: Send multiple snapshots to ensure all players get updated state
     broadcastSnapshot(room, 'game:started');
+    setTimeout(() => broadcastSnapshot(room, 'game:update'), 100); // Secondary sync
     clearBiddingTimer(room.id);
     return;
   }
@@ -497,7 +499,9 @@ function handleBid(room: RoomState, seat: number, amount: number) {
   if (room.provisionalLandlordSeat !== null && room.biddingSeat === room.provisionalLandlordSeat) {
     startPlaying(room);
     io.to(room.id).emit('bidding:ended', { landlordSeat: room.landlordSeat, currentBid: room.currentBid });
+    // CRITICAL: Send multiple snapshots to ensure all players get updated state
     broadcastSnapshot(room, 'game:started');
+    setTimeout(() => broadcastSnapshot(room, 'game:update'), 100); // Secondary sync
     clearBiddingTimer(room.id);
     return;
   }

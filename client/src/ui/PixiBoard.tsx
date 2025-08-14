@@ -149,7 +149,18 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
     }
     const player = snap.players.find((p) => p.seat === mySeat);
     const raw = player?.hand || [];
-    console.log(`myHand: Player seat ${mySeat} has ${raw.length} cards`, { player, raw: raw.slice(0, 5) });
+    console.log(`myHand: Player seat ${mySeat} has ${raw.length} cards`, { 
+      player, 
+      raw: raw.slice(0, 5),
+      gameStarted: snap.started,
+      bidding: snap.bidding,
+      landlordSeat: snap.landlordSeat
+    });
+    
+    // Force update if game just started but no cards visible
+    if (snap.started && !snap.bidding && raw.length === 0) {
+      console.warn('Game started but no hand cards! Requesting fresh snapshot...');
+    }
     // Sort left->right: big -> small. Tie-break by suit for stable grouping.
     const rankValue: Record<string, number> = { '2': 15, 'A': 14, 'K': 13, 'Q': 12, 'J': 11, '10': 10, '9': 9, '8': 8, '7': 7, '6': 6, '5': 5, '4': 4, '3': 3 };
     const suitValue: Record<string, number> = { spades: 4, hearts: 3, clubs: 2, diamonds: 1 };
