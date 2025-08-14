@@ -43,6 +43,7 @@ interface RoomState {
   currentBid: number; // 0..3
   biddingSeat: number; // whose turn to bid
   provisionalLandlordSeat: number | null;
+  biddingDeadline?: number;
 }
 
 const app = express();
@@ -57,6 +58,8 @@ app.get('/healthz', (_req, res) => res.status(200).json({ status: 'ok' }));
 const PORT = Number(process.env.PORT) || 5179;
 
 const rooms: Map<string, RoomState> = new Map();
+const biddingTimers: Map<string, NodeJS.Timeout> = new Map();
+const BIDDING_SECONDS = 10;
 
 function createDeck(): Entity[] {
   const deck: Entity[] = [];
@@ -228,7 +231,9 @@ io.on('connection', (socket) => {
       room.provisionalLandlordSeat = null;
       room.bottomCards = bottom;
       for (let i = 0; i < 3; i++) room.players[i].hand = hands[i];
-      io.to(id).emit('bidding:started', { biddingSeat: room.biddingSeat, currentBid: room.currentBid });
+      room.biddingDeadline = Date.now() + BIDDING_SECONDS * 1000;
+      io.to(id).emit('bidding:started', { biddingSeat: room.biddingSeat, currentBid: room.currentBid, secondsRemaining: BIDDING_SECONDS });
+      scheduleBiddingTimeout(room.id);
     }
   });
 
@@ -305,40 +310,7 @@ io.on('connection', (socket) => {
     const player = room.players.find((p) => p.socketId === socket.id);
     if (!player) return cb?.({ ok: false, error: 'No player' });
     if (room.biddingSeat !== player.seat) return cb?.({ ok: false, error: 'Not your bid turn' });
-
-    // amount: 0=pass, 1..3 bid value
-    if (amount > room.currentBid) {
-      room.currentBid = Math.min(amount, 3);
-      room.provisionalLandlordSeat = player.seat;
-    }
-
-    // advance seat or finish
-    if (room.currentBid === 3) {
-      // max bid reached -> start game
-      startPlaying(room);
-      io.to(room.id).emit('bidding:ended', { landlordSeat: room.landlordSeat, currentBid: room.currentBid });
-      broadcastSnapshot(room, 'game:started');
-      return cb?.({ ok: true });
-    }
-
-    // move to next
-    room.biddingSeat = (room.biddingSeat + 1) % 3;
-
-    // If we have looped back and no one bid (>0), random landlord
-    const everyoneBidOnce = room.biddingSeat === 0; // rough heuristic for 3 players starting seat 0
-    if (everyoneBidOnce && room.currentBid === 0) {
-      room.provisionalLandlordSeat = Math.floor(Math.random() * 3);
-    }
-
-    // If we are back to provisional landlord -> start
-    if (room.provisionalLandlordSeat !== null && room.biddingSeat === room.provisionalLandlordSeat) {
-      startPlaying(room);
-      io.to(room.id).emit('bidding:ended', { landlordSeat: room.landlordSeat, currentBid: room.currentBid });
-      broadcastSnapshot(room, 'game:started');
-      return cb?.({ ok: true });
-    }
-
-    io.to(room.id).emit('bidding:state', { biddingSeat: room.biddingSeat, currentBid: room.currentBid, provisional: room.provisionalLandlordSeat });
+    handleBid(room, player.seat, amount);
     cb?.({ ok: true });
   });
 });
@@ -357,4 +329,58 @@ function startPlaying(room: RoomState) {
   room.lastPlay = [];
   room.lastPlayOwnerSeat = null;
   room.passCount = 0;
+}
+
+function scheduleBiddingTimeout(roomId: string) {
+  clearBiddingTimer(roomId);
+  const room = rooms.get(roomId);
+  if (!room) return;
+  const ms = Math.max(0, (room.biddingDeadline ?? Date.now()) - Date.now());
+  const t = setTimeout(() => {
+    if (!rooms.has(roomId)) return;
+    const r = rooms.get(roomId)!;
+    if (!r.bidding) return;
+    // 超时视为 0 分
+    handleBid(r, r.biddingSeat, 0);
+  }, ms);
+  biddingTimers.set(roomId, t);
+}
+
+function clearBiddingTimer(roomId: string) {
+  const t = biddingTimers.get(roomId);
+  if (t) clearTimeout(t);
+  biddingTimers.delete(roomId);
+}
+
+function handleBid(room: RoomState, seat: number, amount: number) {
+  // amount: 0=pass, 1..3 bid value
+  if (amount > room.currentBid) {
+    room.currentBid = Math.min(amount, 3);
+    room.provisionalLandlordSeat = seat;
+  }
+
+  // 达到 3 分直接开始
+  if (room.currentBid === 3) {
+    startPlaying(room);
+    io.to(room.id).emit('bidding:ended', { landlordSeat: room.landlordSeat, currentBid: room.currentBid });
+    broadcastSnapshot(room, 'game:started');
+    clearBiddingTimer(room.id);
+    return;
+  }
+
+  // 轮到下一家
+  room.biddingSeat = (room.biddingSeat + 1) % 3;
+  room.biddingDeadline = Date.now() + BIDDING_SECONDS * 1000;
+
+  // 如果回到暂定地主，结束叫分
+  if (room.provisionalLandlordSeat !== null && room.biddingSeat === room.provisionalLandlordSeat) {
+    startPlaying(room);
+    io.to(room.id).emit('bidding:ended', { landlordSeat: room.landlordSeat, currentBid: room.currentBid });
+    broadcastSnapshot(room, 'game:started');
+    clearBiddingTimer(room.id);
+    return;
+  }
+
+  io.to(room.id).emit('bidding:state', { biddingSeat: room.biddingSeat, currentBid: room.currentBid, secondsRemaining: BIDDING_SECONDS });
+  scheduleBiddingTimeout(room.id);
 }
