@@ -297,15 +297,23 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
     };
     const leftCfgAv = layouts.find(p => p.id === 1) ?? { id:1, x: 140, y: height/2, cardSpacing: 20, scale: 0.25 };
     const rightCfgAv = layouts.find(p => p.id === 2) ?? { id:2, x: width-140, y: height/2, cardSpacing: 20, scale: 0.25 };
-    const mySeatVal = mySeat ?? 0; const otherSeats = (snap?.players || []).map(p => p.seat).filter(s => s !== mySeatVal).sort((a,b)=>a-b);
+    const mySeatVal = mySeat ?? 0; 
+    const otherSeats = (snap?.players || []).map(p => p.seat).filter(s => s !== mySeatVal).sort((a,b)=>a-b);
+    
     // Place my avatar strictly below the hand row: baseY + cardHeight*scale + radius + margin
     // Place my avatar safely above the bottom edge (avoid clipping)
     const avatarR = Math.max(36, Math.round(baseH * 0.26));
     const myAvatarY = (meCfg.y ?? (height - 80)) - (avatarR + 12);
     drawAvatar(meCfg.x ?? width/2, myAvatarY, mySeatVal);
+    
     // Left/Right avatars vertically centered to avoid overlap with table bevel
-    drawAvatar(leftCfgAv.x ?? 140, (leftCfgAv.y ?? height/2), otherSeats[0] ?? 1);
-    drawAvatar(rightCfgAv.x ?? (width-140), (rightCfgAv.y ?? height/2), otherSeats[1] ?? 2);
+    // Use actual seat numbers from other players, not defaults
+    if (otherSeats.length >= 1) {
+      drawAvatar(leftCfgAv.x ?? 140, (leftCfgAv.y ?? height/2), otherSeats[0]);
+    }
+    if (otherSeats.length >= 2) {
+      drawAvatar(rightCfgAv.x ?? (width-140), (rightCfgAv.y ?? height/2), otherSeats[1]);
+    }
 
     // Render opponents as card backs（左/右固定，不跟随 seat 映射）
     if (snap) {
