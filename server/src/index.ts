@@ -248,6 +248,13 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Allow client to request a fresh personalized snapshot (race-proof during bidding)
+  socket.on('room:snapshot', ({ roomId }: { roomId: string }, cb?: (ret: any) => void) => {
+    const room = rooms.get(roomId);
+    if (!room) return cb?.({ ok: false, error: 'No room' });
+    cb?.({ ok: true, snap: snapshot(room, socket.id) });
+  });
+
   socket.on('play:cards', ({ roomId, cards }: { roomId: string; cards: Entity[] }, cb?: (ret: any) => void) => {
     const room = rooms.get(roomId);
     if (!room) return cb?.({ ok: false, error: 'No room' });

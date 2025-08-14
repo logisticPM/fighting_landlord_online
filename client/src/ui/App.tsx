@@ -46,6 +46,16 @@ export const App: React.FC = () => {
     };
   }, []);
 
+  // After seat is assigned, proactively request a personalized snapshot once to avoid race
+  useEffect(() => {
+    if (!socket || seat === null || !roomId) return;
+    try {
+      socket.emit('room:snapshot', { roomId }, (ret: any) => {
+        if (ret?.ok && ret.snap) setSnap(ret.snap as Snapshot);
+      });
+    } catch {}
+  }, [socket, seat, roomId]);
+
   // Local ticking countdown for turn timer
   useEffect(() => {
     if (!snap || typeof snap.turnSecondsRemaining !== 'number') {
