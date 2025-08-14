@@ -44,6 +44,7 @@ interface RoomState {
   biddingSeat: number; // whose turn to bid
   provisionalLandlordSeat: number | null;
   biddingDeadline?: number;
+  turnDeadline?: number;
 }
 
 const app = express();
@@ -60,6 +61,8 @@ const PORT = Number(process.env.PORT) || 5179;
 const rooms: Map<string, RoomState> = new Map();
 const biddingTimers: Map<string, NodeJS.Timeout> = new Map();
 const BIDDING_SECONDS = 10;
+const PLAY_SECONDS = 30;
+const playTimers: Map<string, NodeJS.Timeout> = new Map();
 
 function createDeck(): Entity[] {
   const deck: Entity[] = [];
@@ -172,6 +175,7 @@ function ensureRoom(roomId: string): RoomState {
       currentBid: 0,
       biddingSeat: 0,
       provisionalLandlordSeat: null,
+      turnDeadline: undefined,
     };
     rooms.set(roomId, room);
   }
@@ -199,6 +203,7 @@ function snapshot(room: RoomState, forSocket: string) {
       handCount: p.hand.length,
       hand: p.socketId === forSocket ? p.hand : [],
     })),
+    turnSecondsRemaining: room.turnDeadline ? Math.max(0, Math.floor((room.turnDeadline - Date.now()) / 1000)) : undefined,
   };
 }
 
@@ -263,6 +268,12 @@ io.on('connection', (socket) => {
     room.lastPlayOwnerSeat = player.seat;
     room.currentSeat = (room.currentSeat + 1) % 3;
     room.passCount = 0;
+    // If landlord has just played, clear table bottom cards so they don't remain visible
+    if (player.seat === room.landlordSeat && room.bottomCards.length > 0) {
+      room.bottomCards = [];
+    }
+    room.turnDeadline = Date.now() + PLAY_SECONDS * 1000;
+    scheduleTurnTimeout(room.id);
 
     broadcastSnapshot(room, 'game:update');
     cb?.({ ok: true });
@@ -291,6 +302,8 @@ io.on('connection', (socket) => {
       room.lastPlayOwnerSeat = null;
       room.passCount = 0;
     }
+    room.turnDeadline = Date.now() + PLAY_SECONDS * 1000;
+    scheduleTurnTimeout(room.id);
     broadcastSnapshot(room, 'game:update');
     cb?.({ ok: true });
   });
@@ -335,6 +348,8 @@ function startPlaying(room: RoomState) {
   room.lastPlay = [];
   room.lastPlayOwnerSeat = null;
   room.passCount = 0;
+  room.turnDeadline = Date.now() + PLAY_SECONDS * 1000;
+  scheduleTurnTimeout(room.id);
 }
 
 function scheduleBiddingTimeout(roomId: string) {
@@ -356,6 +371,37 @@ function clearBiddingTimer(roomId: string) {
   const t = biddingTimers.get(roomId);
   if (t) clearTimeout(t);
   biddingTimers.delete(roomId);
+}
+
+function scheduleTurnTimeout(roomId: string) {
+  // clear previous
+  const t = playTimers.get(roomId);
+  if (t) clearTimeout(t);
+  const room = rooms.get(roomId);
+  if (!room || !room.started) return;
+  const ms = Math.max(0, (room.turnDeadline ?? Date.now()) - Date.now());
+  const timer = setTimeout(() => {
+    const r = rooms.get(roomId);
+    if (!r || !r.started) return;
+    // Auto-pass for current seat if allowed
+    if (r.lastPlay.length === 0 || r.lastPlayOwnerSeat === r.currentSeat) {
+      // cannot auto-pass when starting a round; reset deadline and wait
+      r.turnDeadline = Date.now() + PLAY_SECONDS * 1000;
+      scheduleTurnTimeout(roomId);
+      return;
+    }
+    r.currentSeat = (r.currentSeat + 1) % 3;
+    r.passCount++;
+    if (r.passCount >= 2 && r.currentSeat === r.lastPlayOwnerSeat) {
+      r.lastPlay = [];
+      r.lastPlayOwnerSeat = null;
+      r.passCount = 0;
+    }
+    r.turnDeadline = Date.now() + PLAY_SECONDS * 1000;
+    broadcastSnapshot(r, 'game:update');
+    scheduleTurnTimeout(roomId);
+  }, ms);
+  playTimers.set(roomId, timer);
 }
 
 function handleBid(room: RoomState, seat: number, amount: number) {

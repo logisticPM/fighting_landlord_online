@@ -19,6 +19,7 @@ type Snapshot = {
   lastPlay: Entity[];
   lastPlayOwnerSeat: number | null;
   players: { id: string; seat: number; handCount: number; hand: Entity[] }[];
+  turnSecondsRemaining?: number;
 };
 
 export const App: React.FC = () => {
@@ -28,6 +29,7 @@ export const App: React.FC = () => {
   const [snap, setSnap] = useState<Snapshot | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [bidState, setBidState] = useState<{ biddingSeat: number; currentBid: number; secondsRemaining?: number } | null>(null);
+  const [turnSeconds, setTurnSeconds] = useState<number | null>(null);
 
   useEffect(() => {
     const s = io(SERVER_URL, { transports: ['websocket'] });
@@ -43,6 +45,17 @@ export const App: React.FC = () => {
       try { s.disconnect(); } catch { /* noop */ }
     };
   }, []);
+
+  // Local ticking countdown for turn timer
+  useEffect(() => {
+    if (!snap || typeof snap.turnSecondsRemaining !== 'number') {
+      setTurnSeconds(null);
+      return;
+    }
+    setTurnSeconds(snap.turnSecondsRemaining);
+    const t = setInterval(() => setTurnSeconds(v => v === null ? null : Math.max(0, v - 1)), 1000);
+    return () => clearInterval(t);
+  }, [snap?.turnSecondsRemaining]);
 
   const joinRoom = () => {
     if (!socket) return;
@@ -90,6 +103,7 @@ export const App: React.FC = () => {
             <span>Turn Seat: {snap.currentSeat}</span>
             <span>Landlord: {snap.landlordSeat ?? '-'}</span>
             <span>Bottom: {snap.bottomCount}</span>
+            {typeof turnSeconds === 'number' && <span>Time: {turnSeconds}s</span>}
           </div>
         )}
 
