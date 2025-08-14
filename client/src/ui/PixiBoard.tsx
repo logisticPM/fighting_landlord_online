@@ -262,25 +262,8 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
     // Avatars with landlord/farmer images
     const loadAvatarTexture = (role: 'landlord' | 'farmer'): PIXI.Texture => {
       const p = role === 'landlord' ? '/avatars/landlord.png' : '/avatars/farmer.png';
-      // First try to get from cache, then load fresh
-      try { 
-        // Clear any potential cache issues
-        const cachedTex = PIXI.Assets.cache.get(p);
-        if (cachedTex && cachedTex.valid) {
-          return cachedTex;
-        }
-        // Load fresh
-        const tex = PIXI.Texture.from(p);
-        // Ensure texture is valid before returning
-        if (tex.valid) {
-          return tex;
-        }
-        console.warn(`Avatar texture not valid: ${p}`);
-        return PIXI.Texture.WHITE;
-      } catch (error) { 
-        console.warn(`Failed to load avatar texture: ${p}`, error);
-        return PIXI.Texture.WHITE; 
-      }
+      // Use Texture.from directly to avoid PIXI.Assets cache warning logs
+      try { return PIXI.Texture.from(p); } catch { return PIXI.Texture.WHITE; }
     };
     const drawAvatar = (x: number, y: number, seatNum: number) => {
       const isLandlord = snap?.landlordSeat !== null && snap?.landlordSeat !== undefined && seatNum === (snap?.landlordSeat as number);
@@ -294,12 +277,17 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       const mask = new PIXI.Graphics();
       mask.beginFill(0xffffff, 1).drawCircle(0, 0, r).endFill();
       const sp = new PIXI.Sprite(tex); 
-      sp.anchor.set(0.5);
-      // Ensure no tinting is applied to preserve original colors
-      sp.tint = 0xffffff;
-      // Scale the sprite to fill the circle while maintaining aspect ratio
-      const scaleToFill = Math.max((r * 2) / tex.width, (r * 2) / tex.height);
-      sp.scale.set(scaleToFill);
+      sp.anchor.set(0.5); 
+      // Use the original working approach but improve the scaling
+      if (tex !== PIXI.Texture.WHITE) {
+        // For actual images, scale to fill circle while maintaining aspect ratio
+        const scaleToFill = Math.max((r * 2) / tex.width, (r * 2) / tex.height);
+        sp.scale.set(scaleToFill);
+      } else {
+        // Fallback: use original fixed size approach
+        sp.width = r * 2; 
+        sp.height = r * 2; 
+      }
       sp.mask = mask;
       const ringColor = isLandlord ? 0xf59e0b : 0x1f2937;
       const ring = new PIXI.Graphics(); ring.lineStyle(5, ringColor, 1).drawCircle(0, 0, r + 1);
