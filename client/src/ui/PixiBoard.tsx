@@ -147,6 +147,11 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
     const { hands, center, bottom, fx, ui } = layers;
     hands.removeChildren();
     ui.removeChildren();
+    // If not in playing phase or there is no last play, ensure center is cleared to avoid any stale cards
+    if (!snap || !snap.lastPlay || snap.lastPlay.length === 0) {
+      center.removeChildren();
+      lastPlayKeyRef.current = '';
+    }
     // bottom layer will be explicitly cleared when re-rendering landlord cards
 
     // Layout from GameData mapping
@@ -195,7 +200,9 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       group.position.set(startX + idx * spacing, baseY - (isSelected ? 28 : 0));
       group.eventMode = 'static';
       group.cursor = 'pointer';
-      group.on('pointertap', () => {
+      group.on('pointertap', (e: any) => {
+        // Prevent this click from propagating to stage/global handlers
+        if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
         const next = new Set(selected);
         if (next.has(id)) next.delete(id);
         else next.add(id);
