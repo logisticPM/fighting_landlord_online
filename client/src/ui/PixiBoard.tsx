@@ -262,8 +262,25 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
     // Avatars with landlord/farmer images
     const loadAvatarTexture = (role: 'landlord' | 'farmer'): PIXI.Texture => {
       const p = role === 'landlord' ? '/avatars/landlord.png' : '/avatars/farmer.png';
-      // Use Texture.from directly to avoid PIXI.Assets cache warning logs
-      try { return PIXI.Texture.from(p); } catch { return PIXI.Texture.WHITE; }
+      // First try to get from cache, then load fresh
+      try { 
+        // Clear any potential cache issues
+        const cachedTex = PIXI.Assets.cache.get(p);
+        if (cachedTex && cachedTex.valid) {
+          return cachedTex;
+        }
+        // Load fresh
+        const tex = PIXI.Texture.from(p);
+        // Ensure texture is valid before returning
+        if (tex.valid) {
+          return tex;
+        }
+        console.warn(`Avatar texture not valid: ${p}`);
+        return PIXI.Texture.WHITE;
+      } catch (error) { 
+        console.warn(`Failed to load avatar texture: ${p}`, error);
+        return PIXI.Texture.WHITE; 
+      }
     };
     const drawAvatar = (x: number, y: number, seatNum: number) => {
       const isLandlord = snap?.landlordSeat !== null && snap?.landlordSeat !== undefined && seatNum === (snap?.landlordSeat as number);
@@ -277,7 +294,9 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       const mask = new PIXI.Graphics();
       mask.beginFill(0xffffff, 1).drawCircle(0, 0, r).endFill();
       const sp = new PIXI.Sprite(tex); 
-      sp.anchor.set(0.5); 
+      sp.anchor.set(0.5);
+      // Ensure no tinting is applied to preserve original colors
+      sp.tint = 0xffffff;
       // Scale the sprite to fill the circle while maintaining aspect ratio
       const scaleToFill = Math.max((r * 2) / tex.width, (r * 2) / tex.height);
       sp.scale.set(scaleToFill);
