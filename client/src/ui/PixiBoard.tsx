@@ -174,17 +174,28 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       sp.width = baseW; sp.height = baseH;
       return sp;
     };
+    const createFramedHandCard = (key: string, scaleVal: number): PIXI.Container => {
+      const tex = PIXI.Assets.cache.get(key) || spriteSheetLoader.getTexture(key) || PIXI.Texture.WHITE;
+      const group = new PIXI.Container();
+      const w = baseW * scaleVal;
+      const h = baseH * scaleVal;
+      const sp = new PIXI.Sprite(tex);
+      sp.width = w; sp.height = h; sp.x = 0; sp.y = 0;
+      const frame = new PIXI.Graphics();
+      frame.lineStyle(2, 0x000000, 1).drawRoundedRect(0, 0, w, h, 10);
+      group.addChild(sp, frame);
+      return group;
+    };
 
     myHand.forEach((id, idx) => {
       if (animatingIdsRef.current.has(id)) return; // 跳过动画中的牌
       const key = idToTextureKey(id);
-      const sp = cardFromKey(key);
-      sp.scale.set(scale);
+      const group = createFramedHandCard(key, scale);
       const isSelected = selected.has(id);
-      sp.position.set(startX + idx * spacing, baseY - (isSelected ? 28 : 0));
-      sp.eventMode = 'static';
-      sp.cursor = 'pointer';
-      sp.on('pointertap', () => {
+      group.position.set(startX + idx * spacing, baseY - (isSelected ? 28 : 0));
+      group.eventMode = 'static';
+      group.cursor = 'pointer';
+      group.on('pointertap', () => {
         const next = new Set(selected);
         if (next.has(id)) next.delete(id);
         else next.add(id);
@@ -192,7 +203,7 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
         // re-render selection offset
         renderScene();
       });
-      hands.addChild(sp);
+      hands.addChild(group);
     });
 
     // Avatars with landlord/farmer images
