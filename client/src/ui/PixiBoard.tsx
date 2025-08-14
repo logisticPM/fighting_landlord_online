@@ -262,28 +262,10 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
     // Avatars with landlord/farmer images
     const loadAvatarTexture = (role: 'landlord' | 'farmer'): PIXI.Texture => {
       const p = role === 'landlord' ? '/avatars/landlord.png' : '/avatars/farmer.png';
-      console.log(`Loading ${role} avatar from: ${p}`);
-      
-      // Test if file exists by trying to fetch it first
-      fetch(p).then(response => {
-        console.log(`${role} avatar HTTP status:`, response.status, response.ok);
-        if (!response.ok) {
-          console.error(`${role} avatar file not accessible: ${response.status}`);
-        }
-      }).catch(err => {
-        console.error(`${role} avatar fetch failed:`, err);
-      });
       
       // Use Texture.from directly to avoid PIXI.Assets cache warning logs
       try { 
         const tex = PIXI.Texture.from(p);
-        console.log(`${role} texture created:`, tex.valid, tex.width, tex.height);
-        
-        // Check if texture loaded successfully after a short delay
-        setTimeout(() => {
-          console.log(`${role} texture after delay:`, tex.valid, tex.width, tex.height);
-        }, 100);
-        
         return tex;
       } catch (error) { 
         console.error(`Failed to load ${role} avatar:`, error);
@@ -293,12 +275,10 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
     const drawAvatar = (x: number, y: number, seatNum: number) => {
       const isLandlord = snap?.landlordSeat !== null && snap?.landlordSeat !== undefined && seatNum === (snap?.landlordSeat as number);
       
-      // Debug logging to identify the issue
-      console.log(`Drawing avatar for seat ${seatNum}:`, {
-        landlordSeat: snap?.landlordSeat,
-        isLandlord,
-        role: isLandlord ? 'landlord' : 'farmer'
-      });
+      // Simplified debug logging
+      if (snap?.landlordSeat !== null) {
+        console.log(`Seat ${seatNum}: ${isLandlord ? 'LANDLORD' : 'farmer'}`);
+      }
       
       const tex = loadAvatarTexture(isLandlord ? 'landlord' : 'farmer');
       // Scale avatar radius relative to card height for better visibility
@@ -317,14 +297,12 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
         // For actual images, scale to fill circle while maintaining aspect ratio
         const scaleToFill = Math.max((r * 2) / tex.width, (r * 2) / tex.height);
         sp.scale.set(scaleToFill);
-        console.log(`Avatar scaled for seat ${seatNum}:`, scaleToFill);
       } else {
         // Fallback: create colored circle to distinguish roles
         sp.width = r * 2; 
         sp.height = r * 2;
         // Tint the white texture to show role difference
         sp.tint = isLandlord ? 0xff6b35 : 0x4a90e2; // Orange for landlord, blue for farmer
-        console.log(`Avatar fallback for seat ${seatNum}, role:`, isLandlord ? 'landlord' : 'farmer', 'color:', sp.tint.toString(16));
       }
       sp.mask = mask;
       const ringColor = isLandlord ? 0xf59e0b : 0x1f2937;
@@ -345,12 +323,24 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
     drawAvatar(meCfg.x ?? width/2, myAvatarY, mySeatVal);
     
     // Left/Right avatars vertically centered to avoid overlap with table bevel
-    // Use actual seat numbers from other players, not defaults
-    if (otherSeats.length >= 1) {
-      drawAvatar(leftCfgAv.x ?? 140, (leftCfgAv.y ?? height/2), otherSeats[0]);
-    }
-    if (otherSeats.length >= 2) {
-      drawAvatar(rightCfgAv.x ?? (width-140), (rightCfgAv.y ?? height/2), otherSeats[1]);
+    // Always draw all 3 players: me + 2 others
+    console.log('Avatar rendering:', { mySeatVal, otherSeats, allPlayers: snap?.players?.map(p => p.seat) });
+    
+    // For a 3-player game, we need to render all seats 0, 1, 2
+    // Draw all 3 seats explicitly
+    for (let seat = 0; seat < 3; seat++) {
+      if (seat === mySeatVal) {
+        // My avatar (already drawn above)
+        continue;
+      }
+      
+      // Determine position for other players
+      const isLeftPosition = otherSeats.indexOf(seat) === 0;
+      const x = isLeftPosition ? (leftCfgAv.x ?? 140) : (rightCfgAv.x ?? (width-140));
+      const y = isLeftPosition ? (leftCfgAv.y ?? height/2) : (rightCfgAv.y ?? height/2);
+      
+      console.log(`Drawing other player seat ${seat} at position ${isLeftPosition ? 'left' : 'right'}`);
+      drawAvatar(x, y, seat);
     }
 
     // Render opponents as card backs（左/右固定，不跟随 seat 映射）
