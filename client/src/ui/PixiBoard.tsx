@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import * as PIXI from 'pixi.js';
 import { spriteSheetLoader } from '../game/SpriteSheetLoader';
+import { loadGameData, getGameData, PlayerLayout } from '../game/GameData';
 import { idToTextureKey, Entity } from '../game/cardMapping';
 
 export type Snapshot = {
@@ -52,7 +53,18 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       app.stage.addChild(table, center, hands);
       layersRef.current = { table, hands, center };
 
-      // White background is handled by app background; keep table for future decorations
+      // Background image (locked to background3.png as requested)
+      try {
+        const bg = await PIXI.Assets.load('/GameAssets/images/background3.png');
+        const bgSprite = new PIXI.Sprite(bg as PIXI.Texture);
+        bgSprite.width = width;
+        bgSprite.height = height;
+        bgSprite.position.set(0, 0);
+        table.addChild(bgSprite);
+      } catch {}
+
+      // Load GameData for layout mapping
+      try { await loadGameData(); } catch {}
 
       if (containerRef.current) {
         const canvasEl: HTMLCanvasElement | undefined = (app as any).view ?? (app as any).canvas;
@@ -118,11 +130,19 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
     hands.removeChildren();
     center.removeChildren();
 
-    // Render my hand (bottom center)
-    const spacing = 36;
-    const scale = 0.9;
-    const baseY = height - 220;
-    const startX = (width - (myHand.length - 1) * spacing - 128 * scale) / 2;
+    // Layout from GameData mapping
+    const gd = getGameData();
+    const layouts: PlayerLayout[] = gd?.layout?.players ?? [
+      { id: 0, x: width/2, y: height-80, cardSpacing: 35, scale: 0.8 },
+      { id: 1, x: 100, y: 200, cardSpacing: 20, scale: 0.25 },
+      { id: 2, x: width-100, y: 200, cardSpacing: 20, scale: 0.25 },
+    ];
+    const meCfg = layouts.find(p => p.id === (mySeat ?? 0)) ?? layouts[0];
+    const spacing = meCfg.cardSpacing ?? 35;
+    const scale = meCfg.scale ?? 0.8;
+    const baseY = meCfg.y ?? (height - 80);
+    const total = (myHand.length - 1) * spacing + 128 * scale;
+    const startX = (meCfg.x ?? width/2) - total/2;
     const cardFromKey = (key: string) => {
       const tex = PIXI.Assets.cache.get(key) || spriteSheetLoader.getTexture(key) || PIXI.Texture.WHITE;
       const sp = new PIXI.Sprite(tex);
@@ -150,23 +170,21 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       hands.addChild(sp);
     });
 
-    // Render opponents as card backs (left/right)
+    // Render opponents as card backs (left/right) using layout
     if (snap) {
       const backTex = PIXI.Assets.cache.get('cardback.png') || spriteSheetLoader.getTexture('cardback.png') || PIXI.Texture.WHITE;
       const opponents = snap.players.filter((p) => p.seat !== mySeat);
-      opponents.forEach((p, i) => {
-        const vertical = i === 0; // left first, right second
+      opponents.forEach((p) => {
+        const cfg = layouts.find(l => l.id === p.seat);
         const count = p.handCount;
-        const gap = 20;
+        const gap = cfg?.cardSpacing ?? 20;
         for (let k = 0; k < count; k++) {
           const sp = new PIXI.Sprite(backTex);
           if (backTex === PIXI.Texture.WHITE) { sp.width = 128; sp.height = 178; sp.tint = 0xcccccc; }
-          sp.scale.set(0.6);
-          if (vertical) {
-            sp.position.set(40, 120 + k * gap);
-          } else {
-            sp.position.set(width - 40 - sp.width, 120 + k * gap);
-          }
+          sp.scale.set(cfg?.scale ?? 0.25);
+          const isLeft = (cfg?.x ?? 0) < width/2;
+          if (isLeft) sp.position.set(cfg?.x ?? 100, (cfg?.y ?? 200) + k * gap);
+          else sp.position.set((cfg?.x ?? width-100) - sp.width, (cfg?.y ?? 200) + k * gap);
           hands.addChild(sp);
         }
       });
@@ -187,14 +205,15 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       });
     }
 
-    // Render bottom cards at top center (face up)
+    // Render bottom cards from GameData (top center)
     if (snap && Array.isArray((snap as any).bottom) && (snap as any).bottom.length > 0) {
       const list = (snap as any).bottom as Entity[];
-      const s = 0.7;
-      const spacing2 = 36;
+      const cfg = gd?.layout?.landlord_cards ?? { x: width/2, y: 120, spacing: 25 } as any;
+      const s = meCfg.scale ?? 0.8;
+      const spacing2 = cfg.spacing ?? 25;
       const totalWidth = (list.length - 1) * spacing2 + 128 * s;
-      const startX = (width - totalWidth) / 2;
-      const y = 80;
+      const startX = (cfg.x ?? width/2) - totalWidth / 2;
+      const y = cfg.y ?? 120;
       list.forEach((id, idx) => {
         const sp = cardFromKey(idToTextureKey(id));
         sp.scale.set(s);
