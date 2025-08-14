@@ -28,8 +28,10 @@ type Props = {
 export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedChange, width = 1280, height = 720 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const appRef = useRef<PIXI.Application | null>(null);
-  const layersRef = useRef<{ table: PIXI.Container; hands: PIXI.Container; center: PIXI.Container } | null>(null);
+  const layersRef = useRef<{ table: PIXI.Container; hands: PIXI.Container; center: PIXI.Container; fx: PIXI.Container } | null>(null);
   const lastPlayKeyRef = useRef<string>('');
+  const animatingIdsRef = useRef<Set<Entity>>(new Set());
+  const prevHandRef = useRef<Entity[]>([]);
 
   useEffect(() => {
     let disposed = false;
@@ -51,8 +53,9 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       const table = new PIXI.Container();
       const hands = new PIXI.Container();
       const center = new PIXI.Container();
-      app.stage.addChild(table, center, hands);
-      layersRef.current = { table, hands, center };
+      const fx = new PIXI.Container();
+      app.stage.addChild(table, center, hands, fx);
+      layersRef.current = { table, hands, center, fx };
 
       // Background image (locked to background3.png as requested)
       try {
@@ -127,7 +130,7 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
     const layers = layersRef.current;
     if (!app || !layers) return;
 
-    const { hands, center } = layers;
+    const { hands, center, fx } = layers;
     hands.removeChildren();
 
     // Layout from GameData mapping
@@ -152,6 +155,7 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
     };
 
     myHand.forEach((id, idx) => {
+      if (animatingIdsRef.current.has(id)) return; // 跳过动画中的牌
       const key = idToTextureKey(id);
       const sp = cardFromKey(key);
       sp.scale.set(scale);
@@ -191,7 +195,7 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
     }
 
     // Render last play in center with simple fade/move animation
-    const animate = (sprite: PIXI.DisplayObject, to: { x: number; y: number; alpha?: number; scale?: number }, duration = 300) => {
+    const animate = (sprite: PIXI.DisplayObject, to: { x: number; y: number; alpha?: number; scale?: number }, duration = 300, onDone?: () => void) => {
       const fromX = (sprite as any).x ?? 0;
       const fromY = (sprite as any).y ?? 0;
       const fromAlpha = (sprite as any).alpha ?? 1;
@@ -207,7 +211,7 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
         if ((sprite as any).scale && typeof toScale === 'number') {
           (sprite as any).scale.set(fromScale + (toScale - fromScale) * t);
         }
-        if (t < 1) requestAnimationFrame(tick);
+        if (t < 1) requestAnimationFrame(tick); else onDone?.();
       };
       requestAnimationFrame(tick);
     };
@@ -229,25 +233,72 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
 
     if (snap && snap.lastPlay && snap.lastPlay.length > 0) {
       if (newKey !== lastPlayKeyRef.current) {
-        center.removeChildren();
         const centerY = height / 2 - 90;
         const centerSpacing = 40;
         const totalWidth = (snap.lastPlay.length - 1) * centerSpacing + 128 * 0.82;
-        const startX = (width - totalWidth) / 2;
-        snap.lastPlay.forEach((id, idx) => {
-          const key = idToTextureKey(id);
-          const sp = cardFromKey(key);
-          sp.scale.set(0.82);
-          sp.alpha = 0;
-          sp.position.set(startX + idx * centerSpacing, centerY + 20);
-          center.addChild(sp);
-          animate(sp, { x: startX + idx * centerSpacing, y: centerY, alpha: 1 }, 260);
-        });
-        lastPlayKeyRef.current = newKey;
+        const cxStart = (width - totalWidth) / 2;
+
+        // 如果是我出的牌：从手牌位置飞向中央
+        if (snap.lastPlayOwnerSeat === mySeat) {
+          const ids = snap.lastPlay as Entity[];
+          // 标记动画中，避免在手牌层重绘
+          ids.forEach((id) => animatingIdsRef.current.add(id));
+
+          const finishOne = () => {};
+          let finished = 0;
+          const done = () => {
+            finished++;
+            if (finished === ids.length) {
+              // 动画结束后，渲染最终中央牌并清除 hand 动画标记
+              center.removeChildren();
+              ids.forEach((id, idx) => {
+                const s2 = cardFromKey(idToTextureKey(id));
+                s2.scale.set(0.82);
+                s2.position.set(cxStart + idx * centerSpacing, centerY);
+                center.addChild(s2);
+                animatingIdsRef.current.delete(id);
+              });
+              lastPlayKeyRef.current = newKey;
+            }
+          };
+
+          ids.forEach((id, idx) => {
+            // 计算起点：基于上一帧手牌
+            const prev = prevHandRef.current;
+            const prevIndex = prev.indexOf(id);
+            const startPosX = prevIndex >= 0 ? (startX + prevIndex * spacing) : (cxStart + idx * centerSpacing);
+            const startPosY = prevIndex >= 0 ? baseY : centerY + 20;
+            const ghost = cardFromKey(idToTextureKey(id));
+            ghost.scale.set(scale);
+            ghost.alpha = 1;
+            ghost.position.set(startPosX, startPosY);
+            fx.addChild(ghost);
+            animate(ghost, { x: cxStart + idx * centerSpacing, y: centerY, alpha: 1, scale: 0.82 }, 280, () => {
+              fx.removeChild(ghost);
+              done();
+            });
+          });
+        } else {
+          // 非我方出牌：原地淡入
+          center.removeChildren();
+          (snap.lastPlay as Entity[]).forEach((id, idx) => {
+            const key = idToTextureKey(id);
+            const sp = cardFromKey(key);
+            sp.scale.set(0.82);
+            sp.alpha = 0;
+            sp.position.set(cxStart + idx * centerSpacing, centerY + 20);
+            center.addChild(sp);
+            animate(sp, { x: cxStart + idx * centerSpacing, y: centerY, alpha: 1 }, 260);
+          });
+          lastPlayKeyRef.current = newKey;
+        }
       } else {
         // same last play, keep showing
       }
     }
+
+    // 记录当前手牌用于下次计算起点
+    prevHandRef.current = myHand.slice();
 
     // Render bottom cards from GameData (top center)
     if (snap && Array.isArray((snap as any).bottom) && (snap as any).bottom.length > 0) {
