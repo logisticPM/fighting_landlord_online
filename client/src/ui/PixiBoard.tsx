@@ -202,16 +202,16 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
     // bottom avatar
     drawAvatar(meCfg.x ?? width/2, (meCfg.y ?? (height-80)) + 30, `S${(mySeat ?? 0)}`);
     // left/right avatars
-    const leftCfg = layouts.find(p => p.id === 1) ?? { id:1, x: 100, y: 200, cardSpacing: 20, scale: 0.25 };
-    const rightCfg = layouts.find(p => p.id === 2) ?? { id:2, x: width-100, y: 200, cardSpacing: 20, scale: 0.25 };
-    drawAvatar(leftCfg.x ?? 100, (leftCfg.y ?? 200) - 30, 'S1');
-    drawAvatar(rightCfg.x ?? (width-100), (rightCfg.y ?? 200) - 30, 'S2');
+    const leftCfgAv = layouts.find(p => p.id === 1) ?? { id:1, x: 100, y: 200, cardSpacing: 20, scale: 0.25 };
+    const rightCfgAv = layouts.find(p => p.id === 2) ?? { id:2, x: width-100, y: 200, cardSpacing: 20, scale: 0.25 };
+    drawAvatar(leftCfgAv.x ?? 100, (leftCfgAv.y ?? 200) - 30, 'S1');
+    drawAvatar(rightCfgAv.x ?? (width-100), (rightCfgAv.y ?? 200) - 30, 'S2');
 
     // Render opponents as card backs（左/右固定，不跟随 seat 映射）
     if (snap) {
       const backTex = PIXI.Assets.cache.get('cardback.png') || spriteSheetLoader.getTexture('cardback.png') || PIXI.Texture.WHITE;
       const opp = snap.players.filter((p) => p.seat !== mySeat).map(p => p.handCount);
-      const cfgs = [leftCfg, rightCfg];
+      const cfgs = [leftCfgAv, rightCfgAv];
       for (let i = 0; i < cfgs.length; i++) {
         const cfg = cfgs[i];
         const count = opp[i] ?? 0;
