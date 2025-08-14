@@ -209,9 +209,13 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
     const leftCfgAv = layouts.find(p => p.id === 1) ?? { id:1, x: 100, y: 200, cardSpacing: 20, scale: 0.25 };
     const rightCfgAv = layouts.find(p => p.id === 2) ?? { id:2, x: width-100, y: 200, cardSpacing: 20, scale: 0.25 };
     const mySeatVal = mySeat ?? 0; const otherSeats = (snap?.players || []).map(p => p.seat).filter(s => s !== mySeatVal).sort((a,b)=>a-b);
-    drawAvatar(meCfg.x ?? width/2, (meCfg.y ?? (height-80)) + 45, mySeatVal);
-    drawAvatar(leftCfgAv.x ?? 100, (leftCfgAv.y ?? 200) - 45, otherSeats[0] ?? 1);
-    drawAvatar(rightCfgAv.x ?? (width-100), (rightCfgAv.y ?? 200) - 45, otherSeats[1] ?? 2);
+    // Place my avatar strictly below the hand row: baseY + cardHeight*scale + radius + margin
+    const avatarR = 28;
+    const myAvatarY = (baseY + baseH * scale) + avatarR + 10;
+    drawAvatar(meCfg.x ?? width/2, myAvatarY, mySeatVal);
+    // Left/Right avatars slightly above their card columns
+    drawAvatar(leftCfgAv.x ?? 100, (leftCfgAv.y ?? 200) - 30, otherSeats[0] ?? 1);
+    drawAvatar(rightCfgAv.x ?? (width-100), (rightCfgAv.y ?? 200) - 30, otherSeats[1] ?? 2);
 
     // Render opponents as card backs（左/右固定，不跟随 seat 映射）
     if (snap) {

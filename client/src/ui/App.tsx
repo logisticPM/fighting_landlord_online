@@ -75,68 +75,76 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: 16, fontFamily: 'sans-serif' }}>
-      <h2>Landlord Online</h2>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <input placeholder="Room ID (blank to create)" value={roomId} onChange={(e) => setRoomId(e.target.value)} />
-        <button onClick={joinRoom}>Join</button>
-        {seat !== null && <span>Seat: {seat}</span>}
-      </div>
-
-      {snap && (
-        <div style={{ marginTop: 12 }}>
-          <div>Room: {snap.id} | Started: {String(snap.started)} | Turn Seat: {snap.currentSeat}</div>
-          <div>Landlord Seat: {snap.landlordSeat} | Bottom: {snap.bottomCount}</div>
-          <div>Last Play: {snap.lastPlay?.join(', ') || '-'}</div>
-        </div>
+    <div className="game-root">
+      {/* Pixi board */}
+      {snap && seat !== null && (
+        <PixiBoard snap={snap} mySeat={seat} selected={selected} onSelectedChange={setSelected} />
       )}
 
-      {/* Bidding UI */}
-      {snap && bidState && (
-        <div style={{ marginTop: 12, padding: 10, background: '#fff', display: 'inline-block', border: '1px solid #e5e7eb', borderRadius: 6, boxShadow: '0 2px 8px rgba(0,0,0,.08)' }}>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <strong>Current bid:</strong> <span style={{ fontSize: 18 }}>{bidState.currentBid}</span>
-            <span>|</span>
-            <strong>Turn:</strong> <span style={{ padding: '2px 6px', borderRadius: 4, background: '#eff6ff', color: '#1d4ed8' }}>Seat {bidState.biddingSeat}</span>
-            <span>|</span>
-            <strong>Time:</strong> <span style={{ fontVariantNumeric: 'tabular-nums' }}>{bidState.secondsRemaining ?? 10}s</span>
+      {/* React HUD overlay */}
+      <div className="react-ui-container">
+        {/* Top bar: room + state */}
+        {snap && (
+          <div className="game-info">
+            <span>Room: {snap.id}</span>
+            <span>Turn Seat: {snap.currentSeat}</span>
+            <span>Landlord: {snap.landlordSeat ?? '-'}</span>
+            <span>Bottom: {snap.bottomCount}</span>
           </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+        )}
+
+        {/* Center bidding panel to mirror single-player */}
+        {snap && bidState && (
+          <div className="bidding-panel">
             {[0,1,2,3].map(v => {
               const disabled = seat !== bidState.biddingSeat || (v <= (bidState?.currentBid ?? 0) && v !== 0);
               return (
                 <button
                   key={v}
-                  onClick={() => socket?.emit('bidding:bid', { roomId, amount: v }, () => {})}
-                  disabled={disabled}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: 4,
-                    background: disabled ? '#e5e7eb' : (v===0 ? '#f3f4f6' : '#1d4ed8'),
-                    color: disabled ? '#9ca3af' : (v===0 ? '#111827' : '#fff'),
-                    border: '1px solid #d1d5db',
-                    cursor: disabled ? 'not-allowed' : 'pointer'
+                  onClick={() => {
+                    if (!socket) return;
+                    socket.emit('bidding:bid', { roomId, amount: v }, (ret: any) => {
+                      if (!ret?.ok) alert(ret?.error || 'Bid failed');
+                    });
                   }}
+                  disabled={disabled}
                 >
                   {v===0?'Pass':`Bid ${v}`}
                 </button>
               );
             })}
           </div>
-        </div>
-      )}
+        )}
 
-      {snap && seat !== null && (
-        <div style={{ marginTop: 16 }}>
-          <PixiBoard snap={snap} mySeat={seat} selected={selected} onSelectedChange={setSelected} />
-          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            <button onClick={() => play(Array.from(selected))} disabled={selected.size === 0}>Play selected</button>
-            <button onClick={() => play(myHand.slice(0, 1))} disabled={myHand.length === 0}>Play first card</button>
-            <button onClick={() => pass()}>Pass</button>
-            <button onClick={() => setSelected(new Set())}>Clear selection</button>
+        {/* Bottom controls similar to single-player */}
+        {snap && seat !== null && (
+          <div className="bottom-controls">
+            {snap.started ? (
+              <div className="playing-controls">
+                <div className="player-action-buttons">
+                  <button className="play-btn" onClick={() => play(Array.from(selected))} disabled={selected.size === 0}>Play</button>
+                  <button className="pass-btn" onClick={() => pass()}>Pass</button>
+                  <button onClick={() => setSelected(new Set())}>Clear</button>
+                </div>
+              </div>
+            ) : (
+              bidState ? (
+                <div className="waiting-bidding">Turn: Seat {bidState.biddingSeat} | Current Bid: {bidState.currentBid} | Time: {bidState.secondsRemaining ?? 10}s</div>
+              ) : null
+            )}
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Join controls when not in a seat */}
+        {seat === null && (
+          <div style={{ marginTop: 16 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input placeholder="Room ID (blank to create)" value={roomId} onChange={(e) => setRoomId(e.target.value)} />
+              <button onClick={joinRoom}>Join</button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
