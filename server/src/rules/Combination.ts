@@ -24,11 +24,18 @@ export type Combination = {
   planeTriples?: number; // 飞机中连续三张的个数
 }
 
-// 将实体 id 转换为斗地主数值：3..10=3..10, J=11, Q=12, K=13, A=14, 2=15, 小王=16, 大王=17
+// 将实体 id 转换为斗地主数值：3=3, 4=4, ..., 10=10, J=11, Q=12, K=13, A=14, 2=15, 小王=16, 大王=17
 export function entityToValue(id: number): number {
-  if (id === 53) return 16;
-  if (id === 54) return 17;
-  return (id % 13) + 3;
+  if (id === 53) return 16; // 小王
+  if (id === 54) return 17; // 大王
+  
+  const idx = (id - 1) % 13; // 0-12
+  // ranks数组: ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
+  // 对应斗地主数值：A=14, 2=15, 3=3, 4=4, 5=5, 6=6, 7=7, 8=8, 9=9, 10=10, J=11, Q=12, K=13
+  
+  if (idx === 0) return 14; // A
+  if (idx === 1) return 15; // 2
+  return idx + 1; // 3-K: 3=3, 4=4, ..., K=13
 }
 
 function groupCount(values: number[]): Map<number, number> {
