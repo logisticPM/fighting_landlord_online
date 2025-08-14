@@ -152,7 +152,7 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
     const leftCfg = layouts.find(p => p.id === 1) ?? { id: 1, x: 100, y: 200, cardSpacing: 20, scale: 0.25 };
     const rightCfg = layouts.find(p => p.id === 2) ?? { id: 2, x: width-100, y: 200, cardSpacing: 20, scale: 0.25 };
     const spacing = meCfg.cardSpacing ?? 35;
-    const scale = Math.max(1.0, meCfg.scale ?? 0.8); // 放大我方手牌提高清晰度
+    const scale = meCfg.scale ?? 0.8; // 与本地版保持一致（默认 0.8）
     const baseY = meCfg.y ?? (height - 80);
     const baseW = gd?.card?.width ?? 100;
     const baseH = gd?.card?.height ?? 140;
@@ -291,10 +291,11 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
 
     if (snap && snap.lastPlay && snap.lastPlay.length > 0) {
       if (newKey !== lastPlayKeyRef.current) {
-        const centerY = height / 2 - 90;
-        const centerSpacing = 40;
+        const playedAnchorX = gd?.layout?.player_played_cards?.x ?? (width / 2);
+        const playedAnchorY = gd?.layout?.player_played_cards?.y ?? (height / 2 - 90);
+        const centerSpacing = gd ? Math.max(28, Math.round(baseW * 0.4)) : 40;
         const totalWidth = (snap.lastPlay.length - 1) * centerSpacing + baseW * 0.82;
-        const cxStart = (width - totalWidth) / 2;
+        const cxStart = playedAnchorX - totalWidth / 2;
 
         // 如果是我出的牌：从手牌位置飞向中央
         if (snap.lastPlayOwnerSeat === mySeat) {
@@ -324,11 +325,11 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
             const prev = prevHandRef.current;
             const prevIndex = prev.indexOf(id);
             const startPosX = prevIndex >= 0 ? (startX + prevIndex * spacing) : (cxStart + idx * centerSpacing);
-            const startPosY = prevIndex >= 0 ? baseY : centerY + 20;
+            const startPosY = prevIndex >= 0 ? baseY : playedAnchorY + 20;
             const ghost = createFramedCard(idToTextureKey(id), scale);
             ghost.x = startPosX; ghost.y = startPosY; ghost.alpha = 1; ghost.zIndex = 100 + idx;
             fx.addChild(ghost);
-            animate(ghost, { x: cxStart + idx * centerSpacing, y: centerY, alpha: 1, scale: 0.82 }, 280, () => {
+            animate(ghost, { x: cxStart + idx * centerSpacing, y: playedAnchorY, alpha: 1, scale: 0.82 }, 280, () => {
               fx.removeChild(ghost);
               done();
             });
@@ -339,9 +340,9 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
           (snap.lastPlay as Entity[]).forEach((id, idx) => {
             const group = createFramedCard(idToTextureKey(id), 0.82);
             group.alpha = 0;
-            group.x = cxStart + idx * centerSpacing; group.y = centerY + 20; group.zIndex = 10 + idx;
+            group.x = cxStart + idx * centerSpacing; group.y = playedAnchorY + 20; group.zIndex = 10 + idx;
             center.addChild(group);
-            animate(group, { x: cxStart + idx * centerSpacing, y: centerY, alpha: 1 }, 260);
+            animate(group, { x: cxStart + idx * centerSpacing, y: playedAnchorY, alpha: 1 }, 260);
           });
           lastPlayKeyRef.current = newKey;
         }
