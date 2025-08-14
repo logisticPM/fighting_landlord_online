@@ -358,9 +358,23 @@ server.listen(PORT, () => console.log(`Landlord online server listening on :${PO
 function startPlaying(room: RoomState) {
   room.bidding = false;
   room.started = true;
-  room.landlordSeat = room.provisionalLandlordSeat ?? 0;
+  
+  // CRITICAL FIX: Ensure provisionalLandlordSeat is not null before starting
+  if (room.provisionalLandlordSeat === null || room.provisionalLandlordSeat === undefined) {
+    console.error('[startPlaying] ERROR: No landlord selected, cannot start game');
+    return;
+  }
+  
+  room.landlordSeat = room.provisionalLandlordSeat;
+  console.log(`[startPlaying] Landlord assigned to seat ${room.landlordSeat}`);
+  
   // Give bottom cards to landlord
   const landlord = room.players[room.landlordSeat];
+  if (!landlord) {
+    console.error(`[startPlaying] ERROR: Landlord player not found at seat ${room.landlordSeat}`);
+    return;
+  }
+  
   landlord.hand.push(...room.bottomCards);
   room.currentSeat = room.landlordSeat;
   room.lastPlay = [];

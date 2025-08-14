@@ -143,8 +143,13 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
   }, []);
 
   const myHand = useMemo(() => {
-    if (!snap || mySeat === null) return [] as Entity[];
-    const raw = snap.players.find((p) => p.seat === mySeat)?.hand || [];
+    if (!snap || mySeat === null) {
+      console.log('myHand: No snap or mySeat is null', { snap: !!snap, mySeat });
+      return [] as Entity[];
+    }
+    const player = snap.players.find((p) => p.seat === mySeat);
+    const raw = player?.hand || [];
+    console.log(`myHand: Player seat ${mySeat} has ${raw.length} cards`, { player, raw: raw.slice(0, 5) });
     // Sort left->right: big -> small. Tie-break by suit for stable grouping.
     const rankValue: Record<string, number> = { '2': 15, 'A': 14, 'K': 13, 'Q': 12, 'J': 11, '10': 10, '9': 9, '8': 8, '7': 7, '6': 6, '5': 5, '4': 4, '3': 3 };
     const suitValue: Record<string, number> = { spades: 4, hearts: 3, clubs: 2, diamonds: 1 };
@@ -275,9 +280,10 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
     const drawAvatar = (x: number, y: number, seatNum: number) => {
       const isLandlord = snap?.landlordSeat !== null && snap?.landlordSeat !== undefined && seatNum === (snap?.landlordSeat as number);
       
-      // Simplified debug logging
-      if (snap?.landlordSeat !== null) {
-        console.log(`Seat ${seatNum}: ${isLandlord ? 'LANDLORD' : 'farmer'}`);
+      // Debug logging for landlord assignment
+      console.log(`Avatar ${seatNum}: landlordSeat=${snap?.landlordSeat}, isLandlord=${isLandlord}, role=${isLandlord ? 'LANDLORD' : 'farmer'}`);
+      if (snap?.started && snap?.landlordSeat === null) {
+        console.warn('Game started but no landlord assigned!');
       }
       
       const tex = loadAvatarTexture(isLandlord ? 'landlord' : 'farmer');
