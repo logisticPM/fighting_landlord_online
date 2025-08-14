@@ -264,10 +264,26 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       const p = role === 'landlord' ? '/avatars/landlord.png' : '/avatars/farmer.png';
       console.log(`Loading ${role} avatar from: ${p}`);
       
+      // Test if file exists by trying to fetch it first
+      fetch(p).then(response => {
+        console.log(`${role} avatar HTTP status:`, response.status, response.ok);
+        if (!response.ok) {
+          console.error(`${role} avatar file not accessible: ${response.status}`);
+        }
+      }).catch(err => {
+        console.error(`${role} avatar fetch failed:`, err);
+      });
+      
       // Use Texture.from directly to avoid PIXI.Assets cache warning logs
       try { 
         const tex = PIXI.Texture.from(p);
-        console.log(`${role} texture loaded:`, tex.valid, tex.width, tex.height);
+        console.log(`${role} texture created:`, tex.valid, tex.width, tex.height);
+        
+        // Check if texture loaded successfully after a short delay
+        setTimeout(() => {
+          console.log(`${role} texture after delay:`, tex.valid, tex.width, tex.height);
+        }, 100);
+        
         return tex;
       } catch (error) { 
         console.error(`Failed to load ${role} avatar:`, error);
@@ -295,15 +311,20 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       mask.beginFill(0xffffff, 1).drawCircle(0, 0, r).endFill();
       const sp = new PIXI.Sprite(tex); 
       sp.anchor.set(0.5); 
+      
       // Use the original working approach but improve the scaling
-      if (tex !== PIXI.Texture.WHITE) {
+      if (tex !== PIXI.Texture.WHITE && tex.valid) {
         // For actual images, scale to fill circle while maintaining aspect ratio
         const scaleToFill = Math.max((r * 2) / tex.width, (r * 2) / tex.height);
         sp.scale.set(scaleToFill);
+        console.log(`Avatar scaled for seat ${seatNum}:`, scaleToFill);
       } else {
-        // Fallback: use original fixed size approach
+        // Fallback: create colored circle to distinguish roles
         sp.width = r * 2; 
-        sp.height = r * 2; 
+        sp.height = r * 2;
+        // Tint the white texture to show role difference
+        sp.tint = isLandlord ? 0xff6b35 : 0x4a90e2; // Orange for landlord, blue for farmer
+        console.log(`Avatar fallback for seat ${seatNum}, role:`, isLandlord ? 'landlord' : 'farmer', 'color:', sp.tint.toString(16));
       }
       sp.mask = mask;
       const ringColor = isLandlord ? 0xf59e0b : 0x1f2937;
