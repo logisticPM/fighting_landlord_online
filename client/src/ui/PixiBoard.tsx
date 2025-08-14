@@ -189,7 +189,8 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
     // Avatars with landlord/farmer images
     const loadAvatarTexture = (role: 'landlord' | 'farmer'): PIXI.Texture => {
       const p = role === 'landlord' ? '/avatars/landlord.png' : '/avatars/farmer.png';
-      try { return PIXI.Assets.get(p) || PIXI.Texture.from(p); } catch { return PIXI.Texture.WHITE; }
+      // Use Texture.from directly to avoid PIXI.Assets cache warning logs
+      try { return PIXI.Texture.from(p); } catch { return PIXI.Texture.WHITE; }
     };
     const drawAvatar = (x: number, y: number, seatNum: number) => {
       const isLandlord = snap?.landlordSeat !== null && snap?.landlordSeat !== undefined && seatNum === (snap?.landlordSeat as number);
