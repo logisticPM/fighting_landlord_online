@@ -118,10 +118,12 @@ export const App: React.FC = () => {
         {snap && (
           <div className="game-info">
             <span>Room: {snap.id}</span>
-            <span>Turn Seat: {snap.currentSeat}</span>
-            <span>Landlord: {snap.landlordSeat ?? '-'}</span>
-            <span>Bottom: {snap.bottomCount}</span>
-            {typeof turnSeconds === 'number' && <span>Time: {turnSeconds}s</span>}
+            <span className={`turn-indicator ${snap.currentSeat === seat ? 'my-turn' : 'other-turn'}`}>
+              {snap.currentSeat === seat ? '🎯 Your Turn' : `🔄 Player ${snap.currentSeat}'s Turn`}
+            </span>
+            <span>Landlord: {snap.landlordSeat !== null ? `Player ${snap.landlordSeat}` : '-'}</span>
+            <span>Cards Left: {snap.bottomCount}</span>
+            {typeof turnSeconds === 'number' && <span className="timer">⏱️ {turnSeconds}s</span>}
           </div>
         )}
 
@@ -145,6 +147,27 @@ export const App: React.FC = () => {
                 </button>
               );
             })}
+          </div>
+        )}
+
+        {/* Central turn indicator */}
+        {snap && snap.started && (
+          <div className="central-turn-indicator">
+            <div className={`turn-display ${snap.currentSeat === seat ? 'my-turn-highlight' : 'other-turn-highlight'}`}>
+              {snap.currentSeat === seat ? (
+                <div className="my-turn-text">
+                  <span className="turn-icon">🎮</span>
+                  <span className="turn-message">Your Turn to Play!</span>
+                  {typeof turnSeconds === 'number' && <span className="countdown">{turnSeconds}s left</span>}
+                </div>
+              ) : (
+                <div className="other-turn-text">
+                  <span className="turn-icon">⏳</span>
+                  <span className="turn-message">Player {snap.currentSeat} is playing...</span>
+                  {typeof turnSeconds === 'number' && <span className="countdown">{turnSeconds}s left</span>}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

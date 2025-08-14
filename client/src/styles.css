@@ -50,6 +50,126 @@ body {
   font-size: 0.9rem;
 }
 
+.turn-indicator {
+  font-weight: bold;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.turn-indicator.my-turn {
+  background: linear-gradient(45deg, #4CAF50, #45a049);
+  color: white;
+  box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+  animation: pulse 2s infinite;
+}
+
+.turn-indicator.other-turn {
+  background: rgba(255, 193, 7, 0.8);
+  color: #333;
+}
+
+.timer {
+  color: #ff6b6b;
+  font-weight: bold;
+  animation: timerBlink 1s infinite alternate;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 10px rgba(76, 175, 80, 0.5); }
+  50% { box-shadow: 0 0 20px rgba(76, 175, 80, 0.8); }
+  100% { box-shadow: 0 0 10px rgba(76, 175, 80, 0.5); }
+}
+
+@keyframes timerBlink {
+  0% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+/* Central turn indicator */
+.central-turn-indicator {
+  position: absolute;
+  top: 25%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 15;
+  pointer-events: none;
+}
+
+.turn-display {
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: bold;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.turn-display.my-turn-highlight {
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  color: white;
+  border-color: #66bb6a;
+  animation: myTurnGlow 2s infinite;
+}
+
+.turn-display.other-turn-highlight {
+  background: linear-gradient(135deg, #ff9800, #f57c00);
+  color: white;
+  border-color: #ffb74d;
+  animation: otherTurnPulse 3s infinite;
+}
+
+.my-turn-text, .other-turn-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.turn-icon {
+  font-size: 1.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.turn-message {
+  font-size: 1.1rem;
+  margin-bottom: 0.25rem;
+}
+
+.countdown {
+  font-size: 0.9rem;
+  opacity: 0.9;
+  color: #ffeb3b;
+  animation: countdownPulse 1s infinite alternate;
+}
+
+@keyframes myTurnGlow {
+  0% { 
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+    transform: translateX(-50%) scale(1);
+  }
+  50% { 
+    box-shadow: 0 6px 25px rgba(76, 175, 80, 0.7);
+    transform: translateX(-50%) scale(1.02);
+  }
+  100% { 
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+    transform: translateX(-50%) scale(1);
+  }
+}
+
+@keyframes otherTurnPulse {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+
+@keyframes countdownPulse {
+  0% { opacity: 0.7; transform: scale(1); }
+  100% { opacity: 1; transform: scale(1.05); }
+}
+
 .bottom-controls {
   position: absolute;
   bottom: 40px;
