@@ -3,6 +3,7 @@ import http from 'http';
 import cors from 'cors';
 import { Server } from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
+import { analyzeCombination, canBeat as canBeatCombo } from './rules/Combination';
 
 type PlayerId = string;
 
@@ -241,9 +242,10 @@ io.on('connection', (socket) => {
 
     if (!cards.every((c) => player.hand.includes(c))) return cb?.({ ok: false, error: 'Cards not in hand' });
 
-    const curr = analyzePlay(cards);
-    const last = room.lastPlay.length > 0 ? analyzePlay(room.lastPlay) : null;
-    if (!canBeat(curr, last, cards.length, room.lastPlay.length)) return cb?.({ ok: false, error: 'Invalid play' });
+    // Use full rules
+    const curr = analyzeCombination(cards);
+    const last = room.lastPlay.length > 0 ? analyzeCombination(room.lastPlay) : null;
+    if (!canBeatCombo(curr, last)) return cb?.({ ok: false, error: 'Invalid play' });
 
     player.hand = player.hand.filter((c) => !cards.includes(c));
     room.lastPlay = cards;
