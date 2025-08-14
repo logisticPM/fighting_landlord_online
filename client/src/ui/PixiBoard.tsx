@@ -262,11 +262,28 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
     // Avatars with landlord/farmer images
     const loadAvatarTexture = (role: 'landlord' | 'farmer'): PIXI.Texture => {
       const p = role === 'landlord' ? '/avatars/landlord.png' : '/avatars/farmer.png';
+      console.log(`Loading ${role} avatar from: ${p}`);
+      
       // Use Texture.from directly to avoid PIXI.Assets cache warning logs
-      try { return PIXI.Texture.from(p); } catch { return PIXI.Texture.WHITE; }
+      try { 
+        const tex = PIXI.Texture.from(p);
+        console.log(`${role} texture loaded:`, tex.valid, tex.width, tex.height);
+        return tex;
+      } catch (error) { 
+        console.error(`Failed to load ${role} avatar:`, error);
+        return PIXI.Texture.WHITE; 
+      }
     };
     const drawAvatar = (x: number, y: number, seatNum: number) => {
       const isLandlord = snap?.landlordSeat !== null && snap?.landlordSeat !== undefined && seatNum === (snap?.landlordSeat as number);
+      
+      // Debug logging to identify the issue
+      console.log(`Drawing avatar for seat ${seatNum}:`, {
+        landlordSeat: snap?.landlordSeat,
+        isLandlord,
+        role: isLandlord ? 'landlord' : 'farmer'
+      });
+      
       const tex = loadAvatarTexture(isLandlord ? 'landlord' : 'farmer');
       // Scale avatar radius relative to card height for better visibility
       const r = Math.max(36, Math.round(baseH * 0.26));
