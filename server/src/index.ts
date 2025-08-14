@@ -3,7 +3,8 @@ import http from 'http';
 import cors from 'cors';
 import { Server } from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
-import { analyzeCombination, canBeat as canBeatCombo } from './rules/Combination';
+import { analyzeCombination, canBeat as canBeatCombo, Combination } from './rules/Combination';
+import { HandAnalyzer } from './rules/HandAnalyzer';
 
 type PlayerId = string;
 
@@ -185,6 +186,14 @@ function ensureRoom(roomId: string): RoomState {
 
 function snapshot(room: RoomState, forSocket: string) {
   const viewer = room.players.find((p) => p.socketId === forSocket);
+  
+  // 计算出牌建议（仅对当前玩家）
+  let playSuggestion = null;
+  if (viewer && room.started && !room.bidding && room.currentSeat === viewer.seat) {
+    const lastCombination = room.lastPlay.length > 0 ? analyzeCombination(room.lastPlay) : null;
+    playSuggestion = HandAnalyzer.getPlaySuggestion(viewer.hand, lastCombination);
+  }
+  
   return {
     id: room.id,
     started: room.started,
@@ -205,6 +214,7 @@ function snapshot(room: RoomState, forSocket: string) {
       hand: p.socketId === forSocket ? p.hand : [],
     })),
     turnSecondsRemaining: room.turnDeadline ? Math.max(0, Math.floor((room.turnDeadline - Date.now()) / 1000)) : undefined,
+    playSuggestion, // 出牌建议
   };
 }
 
