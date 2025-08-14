@@ -179,6 +179,7 @@ function ensureRoom(roomId: string): RoomState {
 }
 
 function snapshot(room: RoomState, forSocket: string) {
+  const viewer = room.players.find((p) => p.socketId === forSocket);
   return {
     id: room.id,
     started: room.started,
@@ -187,7 +188,8 @@ function snapshot(room: RoomState, forSocket: string) {
     biddingSeat: room.biddingSeat,
     landlordSeat: room.landlordSeat,
     bottomCount: room.bottomCards.length,
-    bottom: room.started ? room.bottomCards : [],
+    // After game starts, only landlord sees bottom cards; others see none
+    bottom: room.started && viewer && room.landlordSeat === viewer.seat ? room.bottomCards : [],
     currentSeat: room.currentSeat,
     lastPlay: room.lastPlay,
     lastPlayOwnerSeat: room.lastPlayOwnerSeat,

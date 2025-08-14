@@ -316,7 +316,7 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       return group;
     };
 
-    const buildLastPlayKey = () => (snap ? `${snap.lastPlayOwnerSeat}|${(snap.lastPlay||[]).join(',')}` : '');
+    const buildLastPlayKey = () => (snap && snap.started && snap.lastPlayOwnerSeat !== null && Array.isArray(snap.lastPlay) ? `${snap.lastPlayOwnerSeat}|${(snap.lastPlay||[]).join(',')}` : '');
     const newKey = buildLastPlayKey();
 
     // If lastPlay becomes empty -> fade out old center
@@ -331,7 +331,7 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       lastPlayKeyRef.current = newKey;
     }
 
-    if (snap && snap.lastPlay && snap.lastPlay.length > 0) {
+    if (snap && snap.started && snap.lastPlay && snap.lastPlay.length > 0) {
       if (newKey !== lastPlayKeyRef.current) {
         const playedAnchorX = gd?.layout?.player_played_cards?.x ?? (width / 2);
         const playedAnchorY = gd?.layout?.player_played_cards?.y ?? (height / 2 - 90);
