@@ -172,6 +172,7 @@ function snapshot(room: RoomState, forSocket: string) {
     started: room.started,
     landlordSeat: room.landlordSeat,
     bottomCount: room.bottomCards.length,
+    bottom: room.started ? room.bottomCards : [],
     currentSeat: room.currentSeat,
     lastPlay: room.lastPlay,
     lastPlayOwnerSeat: room.lastPlayOwnerSeat,
