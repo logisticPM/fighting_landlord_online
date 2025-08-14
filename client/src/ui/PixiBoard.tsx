@@ -372,7 +372,7 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
               center.removeChildren();
               ids.forEach((id, idx) => {
                 const group = createFramedCard(idToTextureKey(id), 0.82);
-                group.x = cxStart + idx * centerSpacing; group.y = centerY; group.alpha = 1; group.zIndex = 10 + idx;
+                group.x = cxStart + idx * centerSpacing; group.y = playedAnchorY; group.alpha = 1; group.zIndex = 10 + idx;
                 center.addChild(group);
                 animatingIdsRef.current.delete(id);
               });

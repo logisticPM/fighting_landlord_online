@@ -85,8 +85,17 @@ export const App: React.FC = () => {
 
   const play = (cards: Entity[]) => {
     if (!socket || !roomId || cards.length === 0) return;
+    console.log('Attempting to play cards:', cards);
+    console.log('My hand:', myHand);
+    console.log('Selected set:', selected);
     socket.emit('play:cards', { roomId, cards }, (ret: any) => {
-      if (!ret?.ok) alert(ret?.error || 'invalid play');
+      if (!ret?.ok) {
+        console.error('Play failed:', ret?.error);
+        alert(ret?.error || 'invalid play');
+      } else {
+        console.log('Play succeeded');
+        setSelected(new Set()); // Clear selection after successful play
+      }
     });
   };
 

@@ -263,6 +263,10 @@ io.on('connection', (socket) => {
     if (!player) return cb?.({ ok: false, error: 'No player' });
     if (room.currentSeat !== player.seat) return cb?.({ ok: false, error: 'Not your turn' });
 
+    console.log(`Player seat ${player.seat} trying to play cards:`, cards);
+    console.log(`Player hand:`, player.hand);
+    console.log(`Cards in hand check:`, cards.map(c => ({ card: c, inHand: player.hand.includes(c) })));
+
     if (!cards.every((c) => player.hand.includes(c))) return cb?.({ ok: false, error: 'Cards not in hand' });
 
     // Use full rules
