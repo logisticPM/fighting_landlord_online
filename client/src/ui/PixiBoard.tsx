@@ -29,6 +29,7 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
   const containerRef = useRef<HTMLDivElement | null>(null);
   const appRef = useRef<PIXI.Application | null>(null);
   const layersRef = useRef<{ table: PIXI.Container; hands: PIXI.Container; center: PIXI.Container } | null>(null);
+  const lastPlayKeyRef = useRef<string>('');
 
   useEffect(() => {
     let disposed = false;
@@ -128,7 +129,6 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
 
     const { hands, center } = layers;
     hands.removeChildren();
-    center.removeChildren();
 
     // Layout from GameData mapping
     const gd = getGameData();
@@ -190,19 +190,63 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       });
     }
 
-    // Render last play in center
+    // Render last play in center with simple fade/move animation
+    const animate = (sprite: PIXI.DisplayObject, to: { x: number; y: number; alpha?: number; scale?: number }, duration = 300) => {
+      const fromX = (sprite as any).x ?? 0;
+      const fromY = (sprite as any).y ?? 0;
+      const fromAlpha = (sprite as any).alpha ?? 1;
+      const fromScale = (sprite as any).scale?.x ?? 1;
+      const toAlpha = to.alpha ?? fromAlpha;
+      const toScale = to.scale ?? fromScale;
+      const start = performance.now();
+      const tick = (now: number) => {
+        const t = Math.min(1, (now - start) / duration);
+        (sprite as any).x = fromX + (to.x - fromX) * t;
+        (sprite as any).y = fromY + (to.y - fromY) * t;
+        (sprite as any).alpha = fromAlpha + (toAlpha - fromAlpha) * t;
+        if ((sprite as any).scale && typeof toScale === 'number') {
+          (sprite as any).scale.set(fromScale + (toScale - fromScale) * t);
+        }
+        if (t < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    };
+
+    const buildLastPlayKey = () => (snap ? `${snap.lastPlayOwnerSeat}|${(snap.lastPlay||[]).join(',')}` : '');
+    const newKey = buildLastPlayKey();
+
+    // If lastPlay becomes empty -> fade out old center
+    if (snap && (!snap.lastPlay || snap.lastPlay.length === 0)) {
+      if (lastPlayKeyRef.current && center.children.length > 0) {
+        // fade out then clear
+        center.children.forEach((c) => animate(c, { x: (c as any).x, y: (c as any).y + 20, alpha: 0 }, 250));
+        setTimeout(() => center.removeChildren(), 260);
+      } else {
+        center.removeChildren();
+      }
+      lastPlayKeyRef.current = newKey;
+    }
+
     if (snap && snap.lastPlay && snap.lastPlay.length > 0) {
-      const centerY = height / 2 - 90;
-      const centerSpacing = 40;
-      const totalWidth = (snap.lastPlay.length - 1) * centerSpacing + 128 * 0.8;
-      const startX = (width - totalWidth) / 2;
-      snap.lastPlay.forEach((id, idx) => {
-        const key = idToTextureKey(id);
-        const sp = cardFromKey(key);
-        sp.scale.set(0.8);
-        sp.position.set(startX + idx * centerSpacing, centerY);
-        center.addChild(sp);
-      });
+      if (newKey !== lastPlayKeyRef.current) {
+        center.removeChildren();
+        const centerY = height / 2 - 90;
+        const centerSpacing = 40;
+        const totalWidth = (snap.lastPlay.length - 1) * centerSpacing + 128 * 0.82;
+        const startX = (width - totalWidth) / 2;
+        snap.lastPlay.forEach((id, idx) => {
+          const key = idToTextureKey(id);
+          const sp = cardFromKey(key);
+          sp.scale.set(0.82);
+          sp.alpha = 0;
+          sp.position.set(startX + idx * centerSpacing, centerY + 20);
+          center.addChild(sp);
+          animate(sp, { x: startX + idx * centerSpacing, y: centerY, alpha: 1 }, 260);
+        });
+        lastPlayKeyRef.current = newKey;
+      } else {
+        // same last play, keep showing
+      }
     }
 
     // Render bottom cards from GameData (top center)
