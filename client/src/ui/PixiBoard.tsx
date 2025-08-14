@@ -276,7 +276,12 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       shadow.beginFill(0x000000, 0.15).drawCircle(0, 2, r + 2).endFill();
       const mask = new PIXI.Graphics();
       mask.beginFill(0xffffff, 1).drawCircle(0, 0, r).endFill();
-      const sp = new PIXI.Sprite(tex); sp.anchor.set(0.5); sp.width = r * 2; sp.height = r * 2; sp.mask = mask;
+      const sp = new PIXI.Sprite(tex); 
+      sp.anchor.set(0.5); 
+      // Scale the sprite to fill the circle while maintaining aspect ratio
+      const scaleToFill = Math.max((r * 2) / tex.width, (r * 2) / tex.height);
+      sp.scale.set(scaleToFill);
+      sp.mask = mask;
       const ringColor = isLandlord ? 0xf59e0b : 0x1f2937;
       const ring = new PIXI.Graphics(); ring.lineStyle(5, ringColor, 1).drawCircle(0, 0, r + 1);
       const cap = new PIXI.Text(`S${seatNum}`, { fontFamily: 'Arial', fontSize: 12, fill: 0xffffff }); cap.anchor.set(0.5, 0); cap.position.set(0, r + 6);
