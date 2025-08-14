@@ -235,6 +235,8 @@ io.on('connection', (socket) => {
       // 广播一次最新房间快照，让客户端拿到各自 17 张手牌
       broadcastSnapshot(room, 'room:update');
       io.to(id).emit('bidding:started', { biddingSeat: room.biddingSeat, currentBid: room.currentBid, secondsRemaining: BIDDING_SECONDS });
+      // 保险：再发一轮个性化快照，避免个别客户端错过首帧而看不到手牌
+      broadcastSnapshot(room, 'room:update');
       scheduleBiddingTimeout(room.id);
     }
   });
@@ -384,5 +386,7 @@ function handleBid(room: RoomState, seat: number, amount: number) {
   }
 
   io.to(room.id).emit('bidding:state', { biddingSeat: room.biddingSeat, currentBid: room.currentBid, secondsRemaining: BIDDING_SECONDS });
+  // 在每次叫分轮转时也发个性化快照，确保每个玩家都能拿到自己的 17 张手牌
+  broadcastSnapshot(room, 'room:update');
   scheduleBiddingTimeout(room.id);
 }
