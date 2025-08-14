@@ -195,24 +195,41 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       sp.width = baseW; sp.height = baseH;
       return sp;
     };
-    const createFramedHandCard = (key: string, scaleVal: number): PIXI.Container => {
+    const createFramedHandCard = (key: string, scaleVal: number, isSelected = false): PIXI.Container => {
       const tex = PIXI.Assets.cache.get(key) || spriteSheetLoader.getTexture(key) || PIXI.Texture.WHITE;
       const group = new PIXI.Container();
       const w = baseW * scaleVal;
       const h = baseH * scaleVal;
+      
+      // Add subtle shadow for depth
+      const shadow = new PIXI.Graphics();
+      shadow.beginFill(0x000000, 0.3);
+      shadow.drawRoundedRect(2, 4, w, h, 10);
+      shadow.endFill();
+      
       const sp = new PIXI.Sprite(tex);
       sp.width = w; sp.height = h; sp.x = 0; sp.y = 0;
+      
+      // Enhanced frame with selection state
       const frame = new PIXI.Graphics();
-      frame.lineStyle(2, 0x000000, 1).drawRoundedRect(0, 0, w, h, 10);
-      group.addChild(sp, frame);
+      if (isSelected) {
+        frame.lineStyle(3, 0x4CAF50, 1); // Green highlight for selected
+        frame.beginFill(0x4CAF50, 0.1); // Subtle green fill
+      } else {
+        frame.lineStyle(2, 0x333333, 1); // Dark border for unselected
+      }
+      frame.drawRoundedRect(0, 0, w, h, 10);
+      if (isSelected) frame.endFill();
+      
+      group.addChild(shadow, sp, frame);
       return group;
     };
 
     myHand.forEach((id, idx) => {
       if (animatingIdsRef.current.has(id)) return; // 跳过动画中的牌
       const key = idToTextureKey(id);
-      const group = createFramedHandCard(key, scale);
       const isSelected = selected.has(id);
+      const group = createFramedHandCard(key, scale, isSelected);
       group.position.set(startX + idx * spacing, baseY - (isSelected ? 28 : 0));
       group.eventMode = 'static';
       group.cursor = 'pointer';
@@ -223,8 +240,8 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
         if (next.has(id)) next.delete(id);
         else next.add(id);
         onSelectedChange(next);
-        // re-render selection offset
-        renderScene();
+        // Need to re-render to update card border/highlighting
+        // This is necessary for visual feedback but will be optimized by React's diffing
       });
       hands.addChild(group);
     });
@@ -363,7 +380,6 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
           // 标记动画中，避免在手牌层重绘
           ids.forEach((id) => animatingIdsRef.current.add(id));
 
-          const finishOne = () => {};
           let finished = 0;
           const done = () => {
             finished++;

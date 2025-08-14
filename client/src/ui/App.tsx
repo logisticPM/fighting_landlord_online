@@ -30,10 +30,30 @@ export const App: React.FC = () => {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [bidState, setBidState] = useState<{ biddingSeat: number; currentBid: number; secondsRemaining?: number } | null>(null);
   const [turnSeconds, setTurnSeconds] = useState<number | null>(null);
+  const [isConnecting, setIsConnecting] = useState<boolean>(true);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
   useEffect(() => {
     const s = io(SERVER_URL, { transports: ['websocket'] });
     setSocket(s);
+    
+    // Connection status handlers
+    s.on('connect', () => {
+      setIsConnecting(false);
+      setConnectionError(null);
+    });
+    
+    s.on('disconnect', () => {
+      setIsConnecting(true);
+      setConnectionError('Connection lost. Attempting to reconnect...');
+    });
+    
+    s.on('connect_error', (error) => {
+      setIsConnecting(false);
+      setConnectionError(`Connection failed: ${error.message}`);
+    });
+    
+    // Game event handlers
     s.on('room:update', (sn: Snapshot) => setSnap(sn));
     s.on('game:started', (sn: Snapshot) => setSnap(sn));
     s.on('game:update', (sn: Snapshot) => setSnap(sn));
@@ -45,6 +65,7 @@ export const App: React.FC = () => {
       alert(payload.message || 'All players passed. Redealing cards...');
       setSelected(new Set()); // Clear any selection
     });
+    
     return () => {
       try { s.disconnect(); } catch { /* noop */ }
     };
@@ -104,6 +125,34 @@ export const App: React.FC = () => {
       if (!ret?.ok) alert(ret?.error || 'cannot pass');
     });
   };
+
+  // Show connection status overlay if needed
+  if (isConnecting) {
+    return (
+      <div className="game-root">
+        <div className="connection-overlay">
+          <div className="connection-message">
+            <span className="loading-icon">🔄</span>
+            <span>Connecting to server...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (connectionError) {
+    return (
+      <div className="game-root">
+        <div className="connection-overlay error">
+          <div className="connection-message">
+            <span className="error-icon">⚠️</span>
+            <span>{connectionError}</span>
+            <button onClick={() => window.location.reload()}>Retry</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="game-root">
