@@ -365,7 +365,7 @@ export class HandAnalyzer {
     if (!lastCombination || lastCombination.type === CombinationType.Invalid) {
       return {
         canPlay: true,
-        suggestion: "你可以出任意牌型"
+        suggestion: "You can play any card type"
       };
     }
 
@@ -374,7 +374,7 @@ export class HandAnalyzer {
     if (!canPlay) {
       return {
         canPlay: false,
-        suggestion: "建议Pass - 手牌中没有能够压制的牌型"
+        suggestion: "Suggest Pass - No cards can beat this play"
       };
     }
 
@@ -387,7 +387,7 @@ export class HandAnalyzer {
         );
         return {
           canPlay: true,
-          suggestion: `可以出更大的单张`,
+          suggestion: `Can play a higher single card`,
           recommendedCards: [minBetter]
         };
       }
@@ -395,7 +395,7 @@ export class HandAnalyzer {
 
     return {
       canPlay: true,
-      suggestion: "可以出牌压制"
+      suggestion: "Can play to beat this"
     };
   }
 }

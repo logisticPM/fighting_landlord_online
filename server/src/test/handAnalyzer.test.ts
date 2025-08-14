@@ -62,7 +62,7 @@ describe('HandAnalyzer - 出牌建议测试', () => {
       
       const suggestion = HandAnalyzer.getPlaySuggestion(weakHand, strongTarget);
       expect(suggestion.canPlay).toBe(false);
-      expect(suggestion.suggestion).toContain('建议Pass');
+      expect(suggestion.suggestion).toContain('Suggest Pass');
     });
 
     it('should suggest play when valid options exist', () => {
@@ -71,7 +71,7 @@ describe('HandAnalyzer - 出牌建议测试', () => {
       
       const suggestion = HandAnalyzer.getPlaySuggestion(strongHand, weakTarget);
       expect(suggestion.canPlay).toBe(true);
-      expect(suggestion.suggestion).toContain('可以出');
+      expect(suggestion.suggestion).toContain('Can play');
     });
 
     it('should allow any play when no last combination', () => {
@@ -79,7 +79,7 @@ describe('HandAnalyzer - 出牌建议测试', () => {
       const suggestion = HandAnalyzer.getPlaySuggestion(hand, null);
       
       expect(suggestion.canPlay).toBe(true);
-      expect(suggestion.suggestion).toContain('任意牌型');
+      expect(suggestion.suggestion).toContain('any card type');
     });
 
     it('should recommend specific cards for single plays', () => {
@@ -118,7 +118,7 @@ describe('HandAnalyzer - 出牌建议测试', () => {
       
       const suggestion = HandAnalyzer.getPlaySuggestion(weakHand, strongSingle);
       expect(suggestion.canPlay).toBe(false);
-      expect(suggestion.suggestion).toContain('建议Pass');
+      expect(suggestion.suggestion).toContain('Suggest Pass');
     });
 
     it('scenario: player with bomb against regular play', () => {
@@ -135,7 +135,7 @@ describe('HandAnalyzer - 出牌建议测试', () => {
       
       const suggestion = HandAnalyzer.getPlaySuggestion(limitedHand, targetPair);
       expect(suggestion.canPlay).toBe(false); // 没有比A更大的对子
-      expect(suggestion.suggestion).toContain('建议Pass');
+      expect(suggestion.suggestion).toContain('Suggest Pass');
     });
   });
 });
