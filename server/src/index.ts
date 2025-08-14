@@ -232,6 +232,8 @@ io.on('connection', (socket) => {
       room.bottomCards = bottom;
       for (let i = 0; i < 3; i++) room.players[i].hand = hands[i];
       room.biddingDeadline = Date.now() + BIDDING_SECONDS * 1000;
+      // 广播一次最新房间快照，让客户端拿到各自 17 张手牌
+      broadcastSnapshot(room, 'room:update');
       io.to(id).emit('bidding:started', { biddingSeat: room.biddingSeat, currentBid: room.currentBid, secondsRemaining: BIDDING_SECONDS });
       scheduleBiddingTimeout(room.id);
     }
