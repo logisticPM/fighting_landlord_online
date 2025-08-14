@@ -65,18 +65,24 @@ function isPairStraight(values: number[]): boolean {
 
 export function analyzeCombination(cards: number[]): Combination {
   if (!cards || cards.length === 0) return { type: CombinationType.Invalid, power: 0, cards: [] };
+  
+  // 验证卡牌ID有效性 (1-54)
+  if (cards.some(id => id < 1 || id > 54)) {
+    return { type: CombinationType.Invalid, power: 0, cards: [] };
+  }
+  
   const values = cards.map(entityToValue).sort((a, b) => a - b);
   const cnt = cards.length;
 
-  // Rocket
+  // Rocket (小王大王)
   if (cnt === 2 && values.includes(16) && values.includes(17)) {
-    return { type: CombinationType.Rocket, power: 1000, cards };
+    return { type: CombinationType.Rocket, power: 100, cards };
   }
 
-  // Bomb
+  // Bomb (四张相同)
   if (cnt === 4) {
     const g = groupCount(values);
-    if (g.size === 1) return { type: CombinationType.Bomb, power: 100 + values[0], cards };
+    if (g.size === 1) return { type: CombinationType.Bomb, power: values[0], cards };
   }
 
   // Basic by count
