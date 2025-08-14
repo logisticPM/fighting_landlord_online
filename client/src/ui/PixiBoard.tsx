@@ -28,7 +28,7 @@ type Props = {
 export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedChange, width = 1280, height = 720 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const appRef = useRef<PIXI.Application | null>(null);
-  const layersRef = useRef<{ table: PIXI.Container; hands: PIXI.Container; center: PIXI.Container; fx: PIXI.Container; ui: PIXI.Container } | null>(null);
+  const layersRef = useRef<{ table: PIXI.Container; bottom: PIXI.Container; hands: PIXI.Container; center: PIXI.Container; fx: PIXI.Container; ui: PIXI.Container } | null>(null);
   const lastPlayKeyRef = useRef<string>('');
   const animatingIdsRef = useRef<Set<Entity>>(new Set());
   const prevHandRef = useRef<Entity[]>([]);
@@ -57,13 +57,15 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       appRef.current = app as PIXI.Application;
 
       const table = new PIXI.Container();
+      const bottom = new PIXI.Container();
       const hands = new PIXI.Container();
       const center = new PIXI.Container();
       center.sortableChildren = true;
       const fx = new PIXI.Container();
       const ui = new PIXI.Container();
-      app.stage.addChild(table, center, hands, fx, ui);
-      layersRef.current = { table, hands, center, fx, ui };
+      // Order: table < bottom (landlord cards) < center (last plays) < hands < fx < ui
+      app.stage.addChild(table, bottom, center, hands, fx, ui);
+      layersRef.current = { table, bottom, hands, center, fx, ui };
 
       // Background image (prefer GameData texturePath.background)
       try {
@@ -142,9 +144,10 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
     const layers = layersRef.current;
     if (!app || !layers) return;
 
-    const { hands, center, fx, ui } = layers;
+    const { hands, center, bottom, fx, ui } = layers;
     hands.removeChildren();
     ui.removeChildren();
+    // bottom layer will be explicitly cleared when re-rendering landlord cards
 
     // Layout from GameData mapping
     const gd = getGameData();
@@ -375,37 +378,34 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
     // 记录当前手牌用于下次计算起点
     prevHandRef.current = myHand.slice();
 
-    // Render bottom cards from GameData
-    if (snap && snap.started && Array.isArray((snap as any).bottom) && (snap as any).bottom.length > 0) {
-      const list = (snap as any).bottom as Entity[];
+    // Render landlord bottom cards in a dedicated layer
+    bottom.removeChildren();
+    if (snap) {
       const cfg = gd?.layout?.landlord_cards ?? { x: width/2, y: 120, spacing: 25 } as any;
       const s = meCfg.scale ?? 0.8;
       const spacing2 = cfg.spacing ?? 25;
-      const totalWidth = (list.length - 1) * spacing2 + baseW * s;
-      const startX = (cfg.x ?? width/2) - totalWidth / 2;
       const y = cfg.y ?? 120;
-      list.forEach((id, idx) => {
-        const sp = cardFromKey(idToTextureKey(id));
-        sp.scale.set(s);
-        sp.position.set(startX + idx * spacing2, y);
-        center.addChild(sp);
-      });
-    }
-    // During bidding show facedown bottom cards
-    if (snap && !snap.started && snap.bottomCount > 0) {
-      const cfg = gd?.layout?.landlord_cards ?? { x: width/2, y: 120, spacing: 25 } as any;
-      const s = meCfg.scale ?? 0.8;
-      const spacing2 = cfg.spacing ?? 25;
-      const totalWidth = (snap.bottomCount - 1) * spacing2 + baseW * s;
-      const startX = (cfg.x ?? width/2) - totalWidth / 2;
-      const y = cfg.y ?? 120;
-      const backTex = PIXI.Assets.cache.get('cardback.png') || spriteSheetLoader.getTexture('cardback.png') || PIXI.Texture.WHITE;
-      for (let i = 0; i < snap.bottomCount; i++) {
-        const b = new PIXI.Sprite(backTex);
-        if (backTex === PIXI.Texture.WHITE) { b.width = baseW; b.height = baseH; b.tint = 0xcccccc; }
-        b.scale.set(s);
-        b.position.set(startX + i * spacing2, y);
-        center.addChild(b);
+      if (snap.started && Array.isArray((snap as any).bottom) && (snap as any).bottom.length > 0) {
+        const list = (snap as any).bottom as Entity[];
+        const totalWidth = (list.length - 1) * spacing2 + baseW * s;
+        const startX2 = (cfg.x ?? width/2) - totalWidth / 2;
+        list.forEach((id, idx) => {
+          const sp = cardFromKey(idToTextureKey(id));
+          sp.scale.set(s);
+          sp.position.set(startX2 + idx * spacing2, y);
+          bottom.addChild(sp);
+        });
+      } else if (!snap.started && snap.bottomCount > 0) {
+        const totalWidth = (snap.bottomCount - 1) * spacing2 + baseW * s;
+        const startX2 = (cfg.x ?? width/2) - totalWidth / 2;
+        const backTex = PIXI.Assets.cache.get('cardback.png') || spriteSheetLoader.getTexture('cardback.png') || PIXI.Texture.WHITE;
+        for (let i = 0; i < snap.bottomCount; i++) {
+          const b = new PIXI.Sprite(backTex);
+          if (backTex === PIXI.Texture.WHITE) { b.width = baseW; b.height = baseH; b.tint = 0xcccccc; }
+          b.scale.set(s);
+          b.position.set(startX2 + i * spacing2, y);
+          bottom.addChild(b);
+        }
       }
     }
   };
