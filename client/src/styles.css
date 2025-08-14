@@ -205,6 +205,22 @@ body {
     padding: 0.6rem 1.2rem;
     font-size: 0.9rem;
   }
+
+  .bid-buttons-group {
+    gap: 0.25rem;
+    padding: 0.25rem;
+  }
+
+  .bid-button {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+    min-width: 35px;
+  }
+
+  .bid-timer {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
+  }
 }
 
 @media (max-width: 480px) {
@@ -289,6 +305,75 @@ body {
   to { transform: rotate(360deg); }
 }
 
+/* Bidding buttons overlay */
+.bid-buttons-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bid-buttons-overlay.active {
+  animation: bidPulse 2s infinite;
+}
+
+.bid-buttons-group {
+  display: flex;
+  gap: 0.5rem;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 0.5rem;
+  border-radius: 8px;
+  backdrop-filter: blur(5px);
+}
+
+.bid-button {
+  padding: 0.5rem 1rem;
+  border: 2px solid #4CAF50;
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  color: white;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 40px;
+  font-size: 0.9rem;
+}
+
+.bid-button:hover:not(.disabled) {
+  background: linear-gradient(135deg, #45a049, #3d8b40);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}
+
+.bid-button.disabled {
+  background: rgba(128, 128, 128, 0.5);
+  border-color: #666;
+  color: #999;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.bid-timer {
+  background: rgba(255, 193, 7, 0.9);
+  color: #333;
+  padding: 0.25rem 0.75rem;
+  border-radius: 15px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  text-align: center;
+  animation: timerPulse 1s infinite alternate;
+}
+
+@keyframes bidPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes timerPulse {
+  0% { opacity: 0.8; }
+  100% { opacity: 1; }
+}
+
 .bottom-controls {
   position: absolute;
   bottom: 40px;
@@ -307,23 +392,7 @@ body {
   font-size: 14px;
 }
 
-.bidding-panel {
-  display: flex;
-  gap: 15px;
-  background: rgba(0, 0, 0, 0.8);
-  padding: 15px 25px;
-  border-radius: 12px;
-  backdrop-filter: blur(8px);
-  border: 2px solid rgba(255, 255, 255, 0.1);
-}
-
-.bidding-panel button {
-  padding: 12px 24px;
-  font-size: 16px;
-  font-weight: bold;
-  border-radius: 8px;
-  min-width: 80px;
-}
+/* Old bidding panel styles removed - now using per-avatar bidding */
 
 .playing-controls { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
 .player-action-buttons { display: flex; gap: 1rem; }

@@ -158,7 +158,19 @@ export const App: React.FC = () => {
     <div className="game-root">
       {/* Pixi board */}
       {snap && seat !== null && (
-        <PixiBoard snap={snap} mySeat={seat} selected={selected} onSelectedChange={setSelected} />
+        <PixiBoard 
+          snap={snap} 
+          mySeat={seat} 
+          selected={selected} 
+          onSelectedChange={setSelected}
+          bidState={bidState}
+          onBid={(amount: number) => {
+            if (!socket || !roomId) return;
+            socket.emit('bidding:bid', { roomId, amount }, (ret: any) => {
+              if (!ret?.ok) alert(ret?.error || 'Bid failed');
+            });
+          }}
+        />
       )}
 
       {/* React HUD overlay */}
@@ -176,28 +188,7 @@ export const App: React.FC = () => {
           </div>
         )}
 
-        {/* Center bidding panel to mirror single-player */}
-        {snap && bidState && (
-          <div className="bidding-panel">
-            {[0,1,2,3].map(v => {
-              const disabled = seat !== bidState.biddingSeat || (v <= (bidState?.currentBid ?? 0) && v !== 0);
-              return (
-                <button
-                  key={v}
-                  onClick={() => {
-                    if (!socket) return;
-                    socket.emit('bidding:bid', { roomId, amount: v }, (ret: any) => {
-                      if (!ret?.ok) alert(ret?.error || 'Bid failed');
-                    });
-                  }}
-                  disabled={disabled}
-                >
-                  {v===0?'Pass':`Bid ${v}`}
-                </button>
-              );
-            })}
-          </div>
-        )}
+
 
         {/* Central turn indicator */}
         {snap && snap.started && (

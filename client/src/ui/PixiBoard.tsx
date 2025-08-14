@@ -16,16 +16,24 @@ export type Snapshot = {
   players: { id: string; seat: number; handCount: number; hand: Entity[] }[];
 };
 
+type BidState = {
+  biddingSeat: number;
+  currentBid: number;
+  secondsRemaining?: number;
+};
+
 type Props = {
   snap: Snapshot | null;
   mySeat: number | null;
   selected: Set<number>;
   onSelectedChange: (next: Set<number>) => void;
+  bidState?: BidState | null;
+  onBid?: (amount: number) => void;
   width?: number;
   height?: number;
 };
 
-export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedChange, width = 1280, height = 720 }) => {
+export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedChange, bidState, onBid, width = 1280, height = 720 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const appRef = useRef<PIXI.Application | null>(null);
   const layersRef = useRef<{ table: PIXI.Container; bottom: PIXI.Container; hands: PIXI.Container; center: PIXI.Container; fx: PIXI.Container; ui: PIXI.Container } | null>(null);
@@ -467,7 +475,86 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [snap, mySeat, selected]);
 
-  return <div ref={containerRef} />;
+  // Calculate avatar positions for bid buttons
+  const getAvatarPositions = () => {
+    if (!snap) return [];
+    
+    const positions = [];
+    const myAvatarY = height - 80 - 36 - 12; // Same as in renderScene
+    const leftAvatarX = 140;
+    const rightAvatarX = width - 140;
+    const centerAvatarY = height / 2;
+    
+    // My position (always at bottom center)
+    positions.push({
+      seat: mySeat ?? 0,
+      x: width / 2,
+      y: myAvatarY - 60, // Above avatar
+    });
+    
+    // Other players
+    const otherSeats = snap.players.map(p => p.seat).filter(s => s !== mySeat).sort((a,b) => a-b);
+    if (otherSeats[0] !== undefined) {
+      positions.push({
+        seat: otherSeats[0],
+        x: leftAvatarX,
+        y: centerAvatarY - 60,
+      });
+    }
+    if (otherSeats[1] !== undefined) {
+      positions.push({
+        seat: otherSeats[1],
+        x: rightAvatarX,
+        y: centerAvatarY - 60,
+      });
+    }
+    
+    return positions;
+  };
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      <div ref={containerRef} />
+      
+      {/* Bidding buttons overlay */}
+      {bidState && snap && onBid && getAvatarPositions().map(pos => (
+        <div
+          key={pos.seat}
+          className={`bid-buttons-overlay ${pos.seat === bidState.biddingSeat ? 'active' : 'inactive'}`}
+          style={{
+            position: 'absolute',
+            left: pos.x - 100, // Center the 200px wide button group
+            top: pos.y,
+            width: '200px',
+            zIndex: 20,
+          }}
+        >
+          {pos.seat === bidState.biddingSeat && (
+            <div className="bid-buttons-group">
+              {[0, 1, 2, 3].map(amount => {
+                const disabled = mySeat !== bidState.biddingSeat || (amount <= bidState.currentBid && amount !== 0);
+                return (
+                  <button
+                    key={amount}
+                    className={`bid-button ${disabled ? 'disabled' : ''}`}
+                    onClick={() => !disabled && onBid(amount)}
+                    disabled={disabled}
+                  >
+                    {amount === 0 ? 'Pass' : amount}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {pos.seat === bidState.biddingSeat && (
+            <div className="bid-timer">
+              ⏱️ {bidState.secondsRemaining ?? 10}s
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
 };
 
 
