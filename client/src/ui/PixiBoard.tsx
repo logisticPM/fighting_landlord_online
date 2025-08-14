@@ -186,26 +186,32 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       hands.addChild(sp);
     });
 
-    // Avatars (简单占位): 底部/左/右三个头像，显示 Seat 编号
-    const drawAvatar = (x: number, y: number, seatLabel: string) => {
-      const r = 18;
-      const g = new PIXI.Graphics();
-      g.beginFill(0xffffff, 0.95).lineStyle(2, 0x1f2937, 1).drawCircle(0, 0, r).endFill();
-      g.position.set(x, y);
-      const t = new PIXI.Text(seatLabel, { fontFamily: 'Arial', fontSize: 12, fill: 0x111827, align: 'center' });
-      t.anchor.set(0.5, 0.5);
-      t.position.set(0, 0);
-      const wrap = new PIXI.Container();
-      wrap.addChild(g, t);
-      ui.addChild(wrap);
+    // Avatars with landlord/farmer images
+    const loadAvatarTexture = (role: 'landlord' | 'farmer'): PIXI.Texture => {
+      const p = role === 'landlord' ? '/avatars/landlord.png' : '/avatars/farmer.png';
+      try { return PIXI.Assets.get(p) || PIXI.Texture.from(p); } catch { return PIXI.Texture.WHITE; }
     };
-    // bottom avatar
-    drawAvatar(meCfg.x ?? width/2, (meCfg.y ?? (height-80)) + 30, `S${(mySeat ?? 0)}`);
-    // left/right avatars
+    const drawAvatar = (x: number, y: number, seatNum: number) => {
+      const isLandlord = snap?.landlordSeat !== null && snap?.landlordSeat !== undefined && seatNum === (snap?.landlordSeat as number);
+      const tex = loadAvatarTexture(isLandlord ? 'landlord' : 'farmer');
+      const r = 28;
+      const wrap = new PIXI.Container();
+      wrap.position.set(x, y);
+      const shadow = new PIXI.Graphics();
+      shadow.beginFill(0x000000, 0.15).drawCircle(0, 2, r + 2).endFill();
+      const mask = new PIXI.Graphics();
+      mask.beginFill(0xffffff, 1).drawCircle(0, 0, r).endFill();
+      const sp = new PIXI.Sprite(tex); sp.anchor.set(0.5); sp.width = r * 2; sp.height = r * 2; sp.mask = mask;
+      const ring = new PIXI.Graphics(); ring.lineStyle(3, isLandlord ? 0xf59e0b : 0x1f2937, 1).drawCircle(0, 0, r + 1);
+      const cap = new PIXI.Text(`S${seatNum}`, { fontFamily: 'Arial', fontSize: 12, fill: 0xffffff }); cap.anchor.set(0.5, 0); cap.position.set(0, r + 6);
+      wrap.addChild(shadow, sp, mask, ring, cap); ui.addChild(wrap);
+    };
     const leftCfgAv = layouts.find(p => p.id === 1) ?? { id:1, x: 100, y: 200, cardSpacing: 20, scale: 0.25 };
     const rightCfgAv = layouts.find(p => p.id === 2) ?? { id:2, x: width-100, y: 200, cardSpacing: 20, scale: 0.25 };
-    drawAvatar(leftCfgAv.x ?? 100, (leftCfgAv.y ?? 200) - 30, 'S1');
-    drawAvatar(rightCfgAv.x ?? (width-100), (rightCfgAv.y ?? 200) - 30, 'S2');
+    const mySeatVal = mySeat ?? 0; const otherSeats = (snap?.players || []).map(p => p.seat).filter(s => s !== mySeatVal).sort((a,b)=>a-b);
+    drawAvatar(meCfg.x ?? width/2, (meCfg.y ?? (height-80)) + 45, mySeatVal);
+    drawAvatar(leftCfgAv.x ?? 100, (leftCfgAv.y ?? 200) - 45, otherSeats[0] ?? 1);
+    drawAvatar(rightCfgAv.x ?? (width-100), (rightCfgAv.y ?? 200) - 45, otherSeats[1] ?? 2);
 
     // Render opponents as card backs（左/右固定，不跟随 seat 映射）
     if (snap) {
