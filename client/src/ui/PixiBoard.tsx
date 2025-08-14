@@ -194,7 +194,8 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
     const drawAvatar = (x: number, y: number, seatNum: number) => {
       const isLandlord = snap?.landlordSeat !== null && snap?.landlordSeat !== undefined && seatNum === (snap?.landlordSeat as number);
       const tex = loadAvatarTexture(isLandlord ? 'landlord' : 'farmer');
-      const r = 28;
+      // Scale avatar radius relative to card height for better visibility
+      const r = Math.max(36, Math.round(baseH * 0.26));
       const wrap = new PIXI.Container();
       wrap.position.set(x, y);
       const shadow = new PIXI.Graphics();
@@ -202,20 +203,21 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       const mask = new PIXI.Graphics();
       mask.beginFill(0xffffff, 1).drawCircle(0, 0, r).endFill();
       const sp = new PIXI.Sprite(tex); sp.anchor.set(0.5); sp.width = r * 2; sp.height = r * 2; sp.mask = mask;
-      const ring = new PIXI.Graphics(); ring.lineStyle(3, isLandlord ? 0xf59e0b : 0x1f2937, 1).drawCircle(0, 0, r + 1);
+      const ring = new PIXI.Graphics(); ring.lineStyle(4, isLandlord ? 0xf59e0b : 0x1f2937, 1).drawCircle(0, 0, r + 1);
       const cap = new PIXI.Text(`S${seatNum}`, { fontFamily: 'Arial', fontSize: 12, fill: 0xffffff }); cap.anchor.set(0.5, 0); cap.position.set(0, r + 6);
       wrap.addChild(shadow, sp, mask, ring, cap); ui.addChild(wrap);
     };
-    const leftCfgAv = layouts.find(p => p.id === 1) ?? { id:1, x: 100, y: 200, cardSpacing: 20, scale: 0.25 };
-    const rightCfgAv = layouts.find(p => p.id === 2) ?? { id:2, x: width-100, y: 200, cardSpacing: 20, scale: 0.25 };
+    const leftCfgAv = layouts.find(p => p.id === 1) ?? { id:1, x: 140, y: height/2, cardSpacing: 20, scale: 0.25 };
+    const rightCfgAv = layouts.find(p => p.id === 2) ?? { id:2, x: width-140, y: height/2, cardSpacing: 20, scale: 0.25 };
     const mySeatVal = mySeat ?? 0; const otherSeats = (snap?.players || []).map(p => p.seat).filter(s => s !== mySeatVal).sort((a,b)=>a-b);
     // Place my avatar strictly below the hand row: baseY + cardHeight*scale + radius + margin
-    const avatarR = 28;
-    const myAvatarY = (baseY + baseH * scale) + avatarR + 10;
+    // Place my avatar safely above the bottom edge (avoid clipping)
+    const avatarR = Math.max(36, Math.round(baseH * 0.26));
+    const myAvatarY = (meCfg.y ?? (height - 80)) - (avatarR + 12);
     drawAvatar(meCfg.x ?? width/2, myAvatarY, mySeatVal);
-    // Left/Right avatars slightly above their card columns
-    drawAvatar(leftCfgAv.x ?? 100, (leftCfgAv.y ?? 200) - 30, otherSeats[0] ?? 1);
-    drawAvatar(rightCfgAv.x ?? (width-100), (rightCfgAv.y ?? 200) - 30, otherSeats[1] ?? 2);
+    // Left/Right avatars vertically centered to avoid overlap with table bevel
+    drawAvatar(leftCfgAv.x ?? 140, (leftCfgAv.y ?? height/2), otherSeats[0] ?? 1);
+    drawAvatar(rightCfgAv.x ?? (width-140), (rightCfgAv.y ?? height/2), otherSeats[1] ?? 2);
 
     // Render opponents as card backs（左/右固定，不跟随 seat 映射）
     if (snap) {
@@ -225,14 +227,16 @@ export const PixiBoard: React.FC<Props> = ({ snap, mySeat, selected, onSelectedC
       for (let i = 0; i < cfgs.length; i++) {
         const cfg = cfgs[i];
         const count = opp[i] ?? 0;
-        const gap = cfg.cardSpacing ?? 20;
+        // Render opponent card backs in columns but keep them inside the inner table area
+        const gap = Math.max(16, Math.round((cfg.cardSpacing ?? 20)));
         for (let k = 0; k < count; k++) {
           const sp = new PIXI.Sprite(backTex);
           if (backTex === PIXI.Texture.WHITE) { sp.width = baseW; sp.height = baseH; sp.tint = 0xcccccc; }
           sp.scale.set(cfg.scale ?? 0.25);
           const isLeft = (cfg.x ?? 0) < width/2;
-          if (isLeft) sp.position.set(cfg.x ?? 100, (cfg.y ?? 200) + k * gap);
-          else sp.position.set((cfg.x ?? width-100) - sp.width, (cfg.y ?? 200) + k * gap);
+          const xPos = isLeft ? (cfg.x ?? 140) : ((cfg.x ?? (width - 140)) - sp.width);
+          const startY = (cfg.y ?? height/2) - Math.min(count - 1, 8) * (gap / 2);
+          sp.position.set(xPos, startY + k * gap);
           hands.addChild(sp);
         }
       }
